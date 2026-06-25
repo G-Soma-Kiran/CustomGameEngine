@@ -99,7 +99,7 @@ void ActionManager::processDeviceStateToAction()
             for(auto& condition : binding.conditions)
             {
                 ConditionType t = condition->type();
-                if (t == ConditionType::MouseDragCondition  || t == ConditionType::MouseClickCondition || t == ConditionType::MouseHoverCondition)
+                if (t == ConditionType::MouseDragCondition  || t == ConditionType::MouseClickCondition || t == ConditionType::MouseHoverCondition || t == ConditionType::MouseDoubleClickConditon)
                 {
                     mouseConditionType = t;
                     break;
