@@ -45,6 +45,7 @@ void HomeScreen::onLoad( const std::optional<std::vector<Asset>>& assets )
 
     std::vector<std::unique_ptr<InputCondition>> conditionsWalk;
     conditionsWalk.push_back(std::make_unique<KeyCondition>(sf::Keyboard::Key::W));
+    conditionsWalk.push_back(std::make_unique<ModifierCondition>(false , false , false));
     this->registerActionBinding("Walk" , std::move(conditionsWalk));
 
     std::vector<std::unique_ptr<InputCondition>> conditionsRun;
