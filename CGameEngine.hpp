@@ -14,6 +14,7 @@ class Engine
 { 
     sf::RenderWindow m_window;
     SceneManager m_scenes;    
+    void init();
     public:
         Engine(const Game& game);
         void run();  

@@ -5,8 +5,9 @@
 
 
 
-Engine::Engine(const Game& game): m_scenes(game)
+Engine::Engine(const Game& game): m_scenes(game , m_window)
 {
+    init();
 }
 
 void Engine::run()
@@ -28,7 +29,13 @@ void Engine::run()
         m_scenes.update();
         if(m_scenes.isEmpty()){return;}
         m_scenes.sceneUpdate();
-        m_scenes.sceneRender();
+        m_window.clear();
+        m_scenes.sceneRender(m_window);
+        m_window.display();
     }
 }
 
+void Engine::init()
+{
+    m_window.create(sf::VideoMode({800, 800}) , "TEST" , sf::Style::Default , sf::State::Windowed );
+}

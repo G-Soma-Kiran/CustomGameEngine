@@ -40,9 +40,9 @@ class Scene
         void registerActionBinding( const std::string& actionName , std::vector<std::unique_ptr<InputCondition>> conditions);
         virtual void sDoAction(Action input , std::vector<Request>& requests) = 0;
         virtual void sUpdate() = 0;
-        virtual void sRender() = 0;
+        virtual void sRender(sf::RenderWindow& gameWindow) = 0;
         
-        virtual void onLoad(std::vector<Asset> assets) = 0;
+        virtual void onLoad(const std::optional<std::vector<Asset>>& assets) = 0;
         virtual void onDelete() = 0;
         
         virtual bool renderBelow() = 0;
@@ -68,9 +68,9 @@ class Game
             };
         };
         void addGameAsset( const Asset& asset , const std::vector<std::string> ownerScenes );
-
+        bool hasAssets( const std::string& sceneName ) const;
         std::unique_ptr<Scene> makeScene(const std::string& sceneName) const;
-        const std::vector<Asset> getAssetsForScene( const std::string& sceneName ) const;
+        const std::optional<std::vector<Asset>> getAssetsForScene( const std::string& sceneName ) const;
         // Game();
 
 };
@@ -86,19 +86,16 @@ class SceneManager
         void m_clearScenes();
         void m_clearAndPushScene(const std::string& sceneName);
         void m_popAndPushScene(const std::string& sceneName);
+        sf::RenderWindow& m_gameWindow;
     public:
         void update();
         void sceneDoAction();
         void sceneUpdate();
-        void sceneRender();
+        void sceneRender(sf::RenderWindow& gameWindow);
         bool isEmpty();
         void pollEvent(std::optional<sf::Event> opt);
-        SceneManager(const Game& game);
+        SceneManager(const Game& game , sf::RenderWindow& gameWindow);
         void request(Request req);
         
 };
 
-// class HomeScreen : public Scene
-// {
-
-// };

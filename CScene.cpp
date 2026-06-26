@@ -1,6 +1,6 @@
 #include"CScene.hpp"
 
-SceneManager::SceneManager(const Game& game):m_game(game)
+SceneManager::SceneManager(const Game& game , sf::RenderWindow& gameWindow):m_game(game) , m_gameWindow(m_gameWindow)
 {
 
 }
@@ -8,8 +8,8 @@ SceneManager::SceneManager(const Game& game):m_game(game)
 void SceneManager::m_pushScene(const std::string& sceneName)
 {
     auto scene = m_game.makeScene(sceneName);
-    auto& assets = m_game.getAssetsForScene(sceneName); 
-    scene->onLoad(assets);  
+    const auto& assets = m_game.getAssetsForScene(sceneName); 
+    scene->onLoad(assets);
     m_sceneStack.push_back(std::move(scene));
 }
 
@@ -86,7 +86,7 @@ void SceneManager::sceneDoAction()
     }
 }
 
-void Scene::registerActionBinding( const std::string& actionName , std::vector<std::unique_ptr<InputCondition>> conditions )
+void Scene::registerActionBinding( const std::string& actionName , std::vector<std::unique_ptr<InputCondition>> conditions ) //Registering the ction binding also adds it to bindings....need to refactor
 {
     ActionBinding temp;
     temp.actionName = actionName;
@@ -124,7 +124,7 @@ void SceneManager::sceneUpdate()
 
 }
 
-void SceneManager::sceneRender()
+void SceneManager::sceneRender(sf::RenderWindow& gameWindow)
 {
     size_t index=0;
     for( size_t i = m_sceneStack.size()-1 ;i>0 ; i--)
@@ -137,7 +137,7 @@ void SceneManager::sceneRender()
     }
     for( size_t i = index ; i < m_sceneStack.size() ; i++)
     {
-        m_sceneStack[i]->sRender();
+        m_sceneStack[i]->sRender(gameWindow);
     }
 
 }
@@ -152,9 +152,11 @@ void SceneManager::request(Request req)
     m_toUpdate.push_back(req);
 }
 
-const std::vector<Asset> Game::getAssetsForScene( const std::string& sceneName ) const
+const std::optional<std::vector<Asset>> Game::getAssetsForScene( const std::string& sceneName ) const
 {
-    return m_gameAssets.at(sceneName) ;
+    if(hasAssets(sceneName))
+        return m_gameAssets.at(sceneName) ;
+    return std::nullopt;
 }
 
 std::unique_ptr<Scene> Game::makeScene(const std::string& sceneName) const
@@ -168,4 +170,9 @@ void Game::addGameAsset( const Asset& asset , const std::vector<std::string> own
     {
         m_gameAssets[ownerScene].push_back(asset);
     }
+}
+
+bool Game::hasAssets(const std::string& sceneName ) const
+{
+    return (m_gameAssets.count(sceneName) > 0);
 }
