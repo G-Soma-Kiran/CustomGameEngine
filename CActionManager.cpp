@@ -66,6 +66,8 @@ void ActionManager::setDeviceState(std::optional<sf::Event> opt)
             {
                 m_clock.start();
             }
+            if (m_deviceState.isDragging)
+                m_deviceState.outOfWindowHoverBug = true;
             m_deviceState.transientIsDragging = m_deviceState.isDragging;
             m_deviceState.isDragging = false;
             m_deviceState.dragAnchor = {-100, -100};
@@ -91,53 +93,149 @@ void ActionManager::addBinding(ActionBinding bind)
 
 void ActionManager::processDeviceStateToAction()
 {
-    for (const auto& binding : m_bindings) {
-            bool isTriggered = binding.isTriggered(m_deviceState);
-            bool wasActive = m_activeActions.contains(binding.actionName);
+    // for (const auto& binding : m_bindings) {
+    //         bool isTriggered = binding.isTriggered(m_deviceState);
+    //         bool wasActive = m_activeActions.contains(binding.actionName);
 
-            ConditionType mouseConditionType = ConditionType::None;
-            for(auto& condition : binding.conditions)
+    //         ConditionType mouseConditionType = ConditionType::None;
+    //         for(auto& condition : binding.conditions)
+    //         {
+    //             ConditionType t = condition->type();
+    //             if (t == ConditionType::MouseDragCondition  || t == ConditionType::MouseClickCondition || t == ConditionType::MouseHoverCondition || t == ConditionType::MouseDoubleClickConditon)
+    //             {
+    //                 mouseConditionType = t;
+    //                 break;
+    //             }
+
+    //         }
+    //         if( mouseConditionType == ConditionType::MouseClickCondition || mouseConditionType == ConditionType::MouseDoubleClickConditon )
+    //         {
+    //             if(isTriggered)
+    //             {
+    //                 m_actions.emplace_back(binding.actionName , "Pulsed" ,m_deviceState.mousePos );
+    //             }
+    //         }
+    //         else
+    //         {
+    //                 if (isTriggered && !wasActive) {
+    //                 m_activeActions.insert(binding.actionName);
+    //                 if(mouseConditionType == ConditionType::MouseHoverCondition)
+    //                     m_actions.emplace_back(binding.actionName, "Pressed" , m_deviceState.mousePos );
+    //                 else if(mouseConditionType == ConditionType::MouseDragCondition)
+    //                     m_actions.emplace_back(binding.actionName, "Started" , m_deviceState.dragAnchor );
+    //                 else if( mouseConditionType == ConditionType::None )
+    //                     m_actions.emplace_back(binding.actionName, "Pressed" ,m_deviceState.mousePos );
+
+    //             }
+    //             else if (!isTriggered && wasActive) {
+    //                 m_activeActions.erase(binding.actionName);
+    //                 if(mouseConditionType == ConditionType::MouseHoverCondition)
+    //                     m_actions.emplace_back(binding.actionName, "Released" , m_deviceState.mousePos);
+    //                 else if(mouseConditionType == ConditionType::MouseDragCondition)
+    //                     m_actions.emplace_back(binding.actionName, "Ended" , m_deviceState.mousePos );
+    //                 else if( mouseConditionType == ConditionType::None )
+    //                     m_actions.emplace_back(binding.actionName, "Released" , m_deviceState.mousePos );
+    //             }
+    //         }    
+    //     }
+
+    //     if (m_deviceState.isMouseMoveEvent)
+    //         m_deviceState.outOfWindowHoverBug = false; 
+    //     m_deviceState.isMouseMoveEvent = false;
+    //     m_deviceState.transientIsDragging = false;
+    //     m_deviceState.releasedMouseButton.reset();
+    //     m_deviceState.isDoubleClick =  false;
+
+
+
+
+    //New system of 2 pass for releasing expired events first then starting new actions.
+    //Might need to expand to consumed events later for non collision of subset events ex(shift + w , w)
+        auto getMouseConditionType = [](const ActionBinding& binding) {
+        for (const auto& condition : binding.conditions)
+        {
+            ConditionType t = condition->type();
+            if (t == ConditionType::MouseDragCondition    ||
+                t == ConditionType::MouseClickCondition   ||
+                t == ConditionType::MouseHoverCondition   ||
+                t == ConditionType::MouseDoubleClickConditon)
             {
-                ConditionType t = condition->type();
-                if (t == ConditionType::MouseDragCondition  || t == ConditionType::MouseClickCondition || t == ConditionType::MouseHoverCondition || t == ConditionType::MouseDoubleClickConditon)
-                {
-                    mouseConditionType = t;
-                    break;
-                }
+                return t;
+            }
+        }
+    return ConditionType::None;
+    };
+
+    m_activeActions.erase( 
+        std::remove_if( m_activeActions.begin() , m_activeActions.end() , 
+        [this, &getMouseConditionType](const auto& action)
+        {
+            for (const auto& binding : m_bindings)
+            {
+                if (binding.actionName == action && !binding.isTriggered(m_deviceState))
+            {
+                ConditionType mouseConditionType = getMouseConditionType(binding);
+
+                if (mouseConditionType == ConditionType::MouseDragCondition)
+                    m_actions.emplace_back(binding.actionName, "Ended", m_deviceState.mousePos);
+                else
+                    m_actions.emplace_back(binding.actionName, "Released", m_deviceState.mousePos);
+
+                return true;
+            }
 
             }
-            if( mouseConditionType == ConditionType::MouseClickCondition || mouseConditionType == ConditionType::MouseDoubleClickConditon )
-            {
-                if(isTriggered)
-                {
-                    m_actions.emplace_back(binding.actionName , "Pulsed" ,m_deviceState.mousePos );
-                }
-            }
-            else
-            {
-                    if (isTriggered && !wasActive) {
-                    m_activeActions.insert(binding.actionName);
-                    if(mouseConditionType == ConditionType::MouseHoverCondition)
-                        m_actions.emplace_back(binding.actionName, "Pressed" , m_deviceState.mousePos );
-                    else if(mouseConditionType == ConditionType::MouseDragCondition)
-                        m_actions.emplace_back(binding.actionName, "Started" , m_deviceState.dragAnchor );
-                    else if( mouseConditionType == ConditionType::None )
-                        m_actions.emplace_back(binding.actionName, "Pressed" ,m_deviceState.mousePos );
+            return false;
+        }
+    
+    )
+        , m_activeActions.end());
+    
+    // for ( const auto& binding : m_bindings)
+    // {
+    //     if( binding.isTriggered(m_deviceState) )
+    //     {
+    //         for ( const auto& activeAction : m_activeActions)
+    //         {
+    //             if( binding.actionName == activeAction)
+    //             {
+    //                 break;
+    //             }
+    //         }
+    //         m_activeActions.push_back(binding.actionName);
+    //         m_actions.emplace_back( binding.actionName , "Pressed" , m_deviceState.mousePos );
+    //     }
+    // }
+    for (const auto& binding : m_bindings)
+    {
+        ConditionType mouseConditionType = getMouseConditionType(binding);
 
-                }
-                else if (!isTriggered && wasActive) {
-                    m_activeActions.erase(binding.actionName);
-                    if(mouseConditionType == ConditionType::MouseHoverCondition)
-                        m_actions.emplace_back(binding.actionName, "Released" , m_deviceState.mousePos);
-                    else if(mouseConditionType == ConditionType::MouseDragCondition)
-                        m_actions.emplace_back(binding.actionName, "Ended" , m_deviceState.mousePos );
-                    else if( mouseConditionType == ConditionType::None )
-                        m_actions.emplace_back(binding.actionName, "Released" , m_deviceState.mousePos );
-                }
-            }    
+        if (mouseConditionType == ConditionType::MouseClickCondition ||
+            mouseConditionType == ConditionType::MouseDoubleClickConditon)
+        {
+            if (binding.isTriggered(m_deviceState))
+                m_actions.emplace_back(binding.actionName, "Pulsed", m_deviceState.mousePos);
+            continue;
         }
 
-            
+        if (!binding.isTriggered(m_deviceState)) continue;
+
+        bool isActive = std::find(m_activeActions.begin(), m_activeActions.end(),
+            binding.actionName) != m_activeActions.end();
+
+        if (!isActive)
+        {
+            m_activeActions.push_back(binding.actionName);
+
+            if (mouseConditionType == ConditionType::MouseDragCondition)
+                m_actions.emplace_back(binding.actionName, "Started", m_deviceState.dragAnchor);
+            else
+                m_actions.emplace_back(binding.actionName, "Pressed", m_deviceState.mousePos);
+        }
+    }
+
+        if (m_deviceState.isMouseMoveEvent)
+            m_deviceState.outOfWindowHoverBug = false;
         m_deviceState.isMouseMoveEvent = false;
         m_deviceState.transientIsDragging = false;
         m_deviceState.releasedMouseButton.reset();

@@ -35,6 +35,7 @@ struct DeviceState
 
     std::optional<sf::Mouse::Button> releasedMouseButton;
     bool transientIsDragging = false;
+    bool outOfWindowHoverBug = false;
 
     bool isMouseMoveEvent = false;
 
@@ -137,7 +138,7 @@ class MouseHoverCondition : public InputCondition
     public:
     bool isSatisfied(const DeviceState& state) const override
     {
-        return  !state.isDragging && state.isMouseMoveEvent;
+        return  !state.isDragging && !state.outOfWindowHoverBug && state.isMouseMoveEvent;
     }
     ConditionType type() const override
     {
@@ -184,7 +185,7 @@ class ActionManager
 {
     private:
         DeviceState m_deviceState;
-        std::unordered_set<std::string> m_activeActions;
+        std::vector<std::string> m_activeActions; //changed from unordered set to vector for queue behaviour of non active actions.
         std::vector<ActionBinding> m_bindings;
         std::vector<Action> m_actions;
         sf::Clock m_clock;
