@@ -27,31 +27,33 @@ void HomeScreen::onLoad( const std::optional<std::vector<Asset>>& assets )
     {
         //Load assets to asset manager
     }
-    std::vector<std::unique_ptr<InputCondition>> conditionsClick;
-    conditionsClick.push_back(std::make_unique<MouseClickCondition>(sf::Mouse::Button::Left));
-    this->registerActionBinding("Click" , std::move(conditionsClick));
 
-    std::vector<std::unique_ptr<InputCondition>> conditionsDrag;
-    conditionsDrag.push_back(std::make_unique<MouseDragCondition>());
-    this->registerActionBinding("Drag" , std::move(conditionsDrag));
+    ActionBinding& clickBinding = this->registerActionBinding("Click");
+    clickBinding.setGesture<MouseGestureCondition>(mouseGestureType::Click , sf::Mouse::Button::Left);
 
-    std::vector<std::unique_ptr<InputCondition>> conditionsDoubleClick;
-    conditionsDoubleClick.push_back(std::make_unique<MouseDoubleClickCondition>());
-    this->registerActionBinding("DoubleClick" , std::move(conditionsDoubleClick));
+    ActionBinding& dragBinding = this->registerActionBinding("Drag");
+    dragBinding.setGesture<MouseGestureCondition>(mouseGestureType::Drag);
+    dragBinding.addCondition<ModifierCondition>(false, false , false);
+ 
+    ActionBinding& doubleClickBinding = this->registerActionBinding("DoubleClick");
+    doubleClickBinding.setGesture<MouseGestureCondition>(mouseGestureType::DoubleClick );
 
-    std::vector<std::unique_ptr<InputCondition>> conditionsHover;
-    conditionsHover.push_back(std::make_unique<MouseHoverCondition>());
-    this->registerActionBinding("Hover" , std::move(conditionsHover));
+    ActionBinding& hoverBinding = this->registerActionBinding("Hover");
+    hoverBinding.setGesture<MouseGestureCondition>(mouseGestureType::Hover);
 
-    std::vector<std::unique_ptr<InputCondition>> conditionsWalk;
-    conditionsWalk.push_back(std::make_unique<KeyCondition>(sf::Keyboard::Key::W));
-    conditionsWalk.push_back(std::make_unique<ModifierCondition>(false , false , false));
-    this->registerActionBinding("Walk" , std::move(conditionsWalk));
+    ActionBinding& walkBinding = this->registerActionBinding("Walk");
+    walkBinding.addCondition<KeyCondition>(sf::Keyboard::Key::W);
+    walkBinding.addCondition<ModifierCondition>(false , false , false);
 
-    std::vector<std::unique_ptr<InputCondition>> conditionsRun;
-    conditionsRun.push_back(std::make_unique<KeyCondition>(sf::Keyboard::Key::W));
-    conditionsRun.push_back(std::make_unique<ModifierCondition>(false , true , false));
-    this->registerActionBinding("Run" , std::move(conditionsRun));
+    ActionBinding& runBinding = this->registerActionBinding("Run");
+    runBinding.addCondition<KeyCondition>(sf::Keyboard::Key::W);
+    runBinding.addCondition<ModifierCondition>(false , true , false);
+
+    ActionBinding& multiDragBinding = this->registerActionBinding("MultiDrag");
+    multiDragBinding.addCondition<ModifierCondition>(true , false , false);
+    multiDragBinding.setGesture<MouseGestureCondition>(mouseGestureType::Drag);
+
+
 }
 
 void HomeScreen::sDoAction(Action input , std::vector<Request>& requests) 

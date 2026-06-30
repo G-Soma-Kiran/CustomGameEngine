@@ -4,6 +4,8 @@
 #include<functional>
 #include<map>
 #include<unordered_set>
+#include <typeindex>
+#include <typeinfo>
 
 class Action
 {
@@ -19,17 +21,8 @@ class Action
 
 };
 
-
-
-struct DeviceState
+struct mouseGestureState
 {
-    std::unordered_map<sf::Keyboard::Key , bool> keys;
-    std::unordered_map<sf::Mouse::Button , bool> mouseButtons;
-    bool ctrl = false;
-    bool shift = false;
-    bool alt = false;
-    sf::Vector2i mousePos = {-100 , -100};
-    
     bool isDragging = false;          
     sf::Vector2i dragAnchor = {-100,-100};
 
@@ -41,26 +34,60 @@ struct DeviceState
 
     bool isDoubleClick = false;
 
+    void prepeareForNextEvent()
+    {
+        if (isMouseMoveEvent)
+            outOfWindowHoverBug = false;
+        isMouseMoveEvent = false;
+        transientIsDragging = false;
+        releasedMouseButton.reset();
+        isDoubleClick =  false;
+    }
 };
 
-enum class ConditionType
+struct DeviceState
 {
-    None,
-    KeyCondition,
-    ModifierCondition,
-    MouseClickCondition,
-    MouseDragCondition,
-    MouseHoverCondition,
-    MouseDoubleClickConditon,
+    std::unordered_map<sf::Keyboard::Key , bool> keys;
+    std::unordered_map<sf::Mouse::Button , bool> mouseButtons;
+    bool ctrl = false;
+    bool shift = false;
+    bool alt = false;
+    sf::Vector2i mousePos = {-100 , -100};
+    
+    mouseGestureState mouseGesture;
+
 };
 
-class InputCondition {
+enum class mouseGestureType
+{
+    Click,
+    Drag,
+    Hover,
+    DoubleClick,
+};
+
+enum class gestureType
+{
+    Pulse,
+    NonPulse,
+};
+
+
+class InputCondition 
+{
 public:
     virtual ~InputCondition() = default;
     virtual bool isSatisfied(const DeviceState& state) const = 0;
-    virtual ConditionType type() const = 0;
 };
 
+class GestureCondition
+{
+    public:
+        virtual ~GestureCondition() = default;
+        virtual bool isSatisfied(const DeviceState& state) const = 0;
+        virtual gestureType type() const = 0;
+        virtual sf::Vector2i mousePosAtActionStart(const DeviceState& state) const = 0;
+};
 
 class KeyCondition : public InputCondition {
 private:
@@ -70,10 +97,6 @@ public:
     bool isSatisfied(const DeviceState& state) const override {
         auto it = state.keys.find(m_key);
         return (it != state.keys.end()) ? it->second : false;
-    }
-    ConditionType type() const override
-    {
-        return ConditionType::KeyCondition;
     }
 };
 
@@ -85,88 +108,65 @@ public:
     bool isSatisfied(const DeviceState& state) const override {
         return (m_ctrl == state.ctrl) && (m_shift == state.shift) && (m_alt == state.alt);
     }
-    ConditionType type() const override
-    {
-        return ConditionType::ModifierCondition;
-    }
 };
 
-class MouseClickCondition : public InputCondition
+class MouseGestureCondition : public GestureCondition
 {
     private:
-        sf::Mouse::Button m_mouseButton;
-        
+        mouseGestureType m_gesture;
+        sf::Mouse::Button m_mouseButton = sf::Mouse::Button::Left;
+        bool m_isSatisfied(const DeviceState& state) const;
     public:
-        MouseClickCondition( sf::Mouse::Button mouseButton ) : m_mouseButton(mouseButton){};
+        MouseGestureCondition(mouseGestureType gesture , sf::Mouse::Button mouseButton):m_gesture(gesture) , m_mouseButton(mouseButton){};
+        MouseGestureCondition(mouseGestureType gesture ):m_gesture(gesture){};
+
         bool isSatisfied(const DeviceState& state) const override
         {
-            if(  state.releasedMouseButton.has_value() && (state.releasedMouseButton.value() == m_mouseButton) )
+            return m_isSatisfied(state);
+        }
+
+        gestureType type() const override
+        {
+            if( m_gesture == mouseGestureType::Click || m_gesture == mouseGestureType::DoubleClick )
             {
-                if(m_mouseButton != sf::Mouse::Button::Left)
-                {
-                    return true;
-                }
-                else
-                {
-                    return !state.transientIsDragging;
-                }
+                return gestureType::Pulse;
             }
-            return false;
+            else
+            {
+                return gestureType::NonPulse;
+            }
         }
-        
-        ConditionType type() const override
+        sf::Vector2i mousePosAtActionStart(const DeviceState& state) const
         {
-            return ConditionType::MouseClickCondition;
-        }
-};
-
-class MouseDragCondition : public InputCondition
-{
-    public:
-    bool isSatisfied(const DeviceState& state) const override
-    {
-        return state.isDragging;
-    }
-    ConditionType type() const override
-    {
-        return ConditionType::MouseDragCondition;
-    }
-};
-
-class MouseHoverCondition : public InputCondition
-{
-    public:
-    bool isSatisfied(const DeviceState& state) const override
-    {
-        return  !state.isDragging && !state.outOfWindowHoverBug && state.isMouseMoveEvent;
-    }
-    ConditionType type() const override
-    {
-        return ConditionType::MouseHoverCondition;
-    }
-};
-
-class MouseDoubleClickCondition : public InputCondition
-{
-    public:
-        bool isSatisfied(const DeviceState& state) const override
-        {
-            return !state.transientIsDragging && state.isDoubleClick;
-        }
-        ConditionType type() const override
-        {
-            return ConditionType::MouseDoubleClickConditon;
+            if( m_gesture == mouseGestureType::Drag )
+            {
+                return state.mouseGesture.dragAnchor;
+            }
+            else
+            {
+                return state.mousePos;
+            }
         }
 };
 
 struct ActionBinding 
 {
+    public:
     std::string actionName;
     std::vector<std::unique_ptr<InputCondition>> conditions;
+    std::optional<std::unique_ptr<GestureCondition>> gesture;
+    bool hasPulseGesture() const
+    {
+        if(!gesture) return false;
+
+        if(gesture.value() && (gesture.value()->type() == gestureType::Pulse) ) return true;
+        
+        return false;
+    }
 
     bool isTriggered(const DeviceState& state) const 
     {
-        if (conditions.empty()) return false;
+        if (conditions.empty() && !gesture.has_value()) return false;
 
         for (const auto& condition : conditions) 
         {
@@ -175,8 +175,31 @@ struct ActionBinding
                 return false; 
             }
         }
+
+        if(gesture.has_value())
+        {
+            if(!(gesture.value()->isSatisfied(state)))
+            {
+                return false;
+            }
+        }
+        
+        
+
         return true;
     }
+
+    template<typename T , typename... Args>
+    void addCondition(Args&&... args)
+    {
+        conditions.push_back( std::make_unique<T>(std::forward<Args>(args)...));
+    };
+
+    template<typename T , typename... Args>
+    void setGesture(Args&&... args)
+    {
+        gesture = std::make_unique<T>(std::forward<Args>(args)...);
+    };
     
 };
 
@@ -189,9 +212,10 @@ class ActionManager
         std::vector<ActionBinding> m_bindings;
         std::vector<Action> m_actions;
         sf::Clock m_clock;
+        void m_updateMouseGestureState( std::optional<sf::Event> opt );
     public:
         void setDeviceState( std::optional<sf::Event> opt );
-        void addBinding(ActionBinding bind);
+        ActionBinding& addBinding(ActionBinding bind);
         void processDeviceStateToAction();
         std::vector<Action> getActions();
     

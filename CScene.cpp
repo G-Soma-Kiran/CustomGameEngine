@@ -86,20 +86,27 @@ void SceneManager::sceneDoAction()
     }
 }
 
-void Scene::registerActionBinding( const std::string& actionName , std::vector<std::unique_ptr<InputCondition>> conditions ) //Registering the ction binding also adds it to bindings....need to refactor
+ActionBinding& Scene::registerActionBinding( const std::string& actionName )
 {
     ActionBinding temp;
     temp.actionName = actionName;
-    for(auto& condition : conditions )
-    {
-        temp.conditions.push_back(std::move(condition));
-    }
-    m_actionManager.addBinding(std::move(temp));
+    return m_actionManager.addBinding(std::move(temp));
+
 }
 
 void SceneManager::pollEvent(std::optional<sf::Event> opt)
 {
-    for( size_t i=0 ; i < m_sceneStack.size(); i++)
+    size_t index=0;
+    for( size_t i = m_sceneStack.size()-1 ;i>0 ; i--)
+    {
+        if(m_sceneStack[i]->propagateEventBelow() == false)
+        {
+            index = i;
+            break;
+        }
+    }
+
+    for( size_t i=index ; i < m_sceneStack.size(); i++)
     {
         m_sceneStack[i]->m_actionManager.setDeviceState(opt);
         m_sceneStack[i]->m_actionManager.processDeviceStateToAction();

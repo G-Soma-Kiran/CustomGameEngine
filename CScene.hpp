@@ -37,7 +37,7 @@ class Scene
         ActionManager m_actionManager;
         friend class SceneManager;
     public:
-        void registerActionBinding( const std::string& actionName , std::vector<std::unique_ptr<InputCondition>> conditions);
+        ActionBinding& registerActionBinding( const std::string& actionName);
         virtual void sDoAction(Action input , std::vector<Request>& requests) = 0;
         virtual void sUpdate() = 0;
         virtual void sRender(sf::RenderWindow& gameWindow) = 0;
