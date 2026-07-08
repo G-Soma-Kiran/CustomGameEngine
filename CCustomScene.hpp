@@ -3,6 +3,8 @@
 
 class HomeScreen : public Scene
 {
+    // private:
+    //     std::shared_ptr<Entity> m_spawnDraggableRectangle(sf::Vector2i mousePos);
     public:
         void sDoAction(Action input , std::vector<Request>& requests) override ;
         void sUpdate() override ;

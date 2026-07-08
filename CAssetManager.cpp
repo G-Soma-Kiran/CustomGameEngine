@@ -25,3 +25,17 @@ const sf::Texture& AssetManager::getTexture(const std::string& textureName) cons
 {
     return m_textures.at(textureName);
 }
+
+void AssetManager::loadAssets( const std::optional<std::vector<Asset>>& assets )
+{
+    if(assets)
+    {
+        for( const auto& asset : assets.value() )
+        {
+            if(asset.type == "Texture")
+            {
+                this->addTexture(asset.name , asset.filePath);
+            }
+        }
+    }
+}

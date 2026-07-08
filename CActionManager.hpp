@@ -110,6 +110,19 @@ public:
     }
 };
 
+class MouseKeyCondition : public InputCondition
+{
+    private:
+        sf::Mouse::Button m_mouseButton;
+    public:
+        MouseKeyCondition(sf::Mouse::Button mouseButton) : m_mouseButton(mouseButton) {};
+        bool isSatisfied(const DeviceState& state) const override {
+            auto it = state.mouseButtons.find(m_mouseButton);
+            return (it != state.mouseButtons.end()) ? it->second : false;
+        }
+
+};
+
 class MouseGestureCondition : public GestureCondition
 {
     private:
@@ -127,7 +140,7 @@ class MouseGestureCondition : public GestureCondition
 
         gestureType type() const override
         {
-            if( m_gesture == mouseGestureType::Click || m_gesture == mouseGestureType::DoubleClick )
+            if( m_gesture == mouseGestureType::Click || m_gesture == mouseGestureType::DoubleClick || m_gesture == mouseGestureType::Hover)
             {
                 return gestureType::Pulse;
             }

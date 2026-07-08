@@ -84,5 +84,44 @@ class CVisual
 {
     public:
         sf::Sprite sprite;
-        CVisual(sf::Texture texture) : sprite(texture){};
+        CVisual(const sf::Texture& texture) : sprite(texture){};
+};
+
+class CDebugShape
+{
+    public:
+        sf::RectangleShape shapeRect = sf::RectangleShape({200.0f, 100.0f});
+};
+
+class CTransform
+{
+    public:
+        Vector position = {0 , 0};
+        Vector velocity = {0 , 0};
+        CTransform(const Vector& p , const Vector& v = {0 , 0} ) : position(p) , velocity(v) {};
+};
+
+class CDraggable
+{
+    public:
+        bool isBeingDragged = false;
+        Vector dragPosition = {0 , 0};
+        sf::FloatRect localDragHitbox;
+        CDraggable(sf::FloatRect rect) :localDragHitbox(rect){};
+};
+
+enum class ButtonState
+{
+    Normal,
+    Hovered,
+    Pressed,
+};
+
+class CButton
+{
+    public:
+        ButtonState currentState = ButtonState::Normal;
+        const sf::Texture& buttonTexture;
+        std::unordered_map<ButtonState , sf::IntRect> stateBoundingRects;
+        CButton(const sf::Texture& btnTexture):buttonTexture(btnTexture){};
 };

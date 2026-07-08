@@ -72,7 +72,6 @@ class Game
         std::unique_ptr<Scene> makeScene(const std::string& sceneName) const;
         const std::optional<std::vector<Asset>> getAssetsForScene( const std::string& sceneName ) const;
         // Game();
-
 };
 
 class SceneManager

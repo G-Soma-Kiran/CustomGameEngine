@@ -37,5 +37,5 @@ void Engine::run()
 
 void Engine::init()
 {
-    m_window.create(sf::VideoMode({800, 800}) , "TEST" , sf::Style::Default , sf::State::Windowed );
+    m_window.create(sf::VideoMode({1920, 1080}) , "TEST" , sf::Style::Default , sf::State::Fullscreen );
 }
