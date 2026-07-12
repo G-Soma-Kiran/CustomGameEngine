@@ -87,4 +87,7 @@ class EntityManager
 
 
         void refreshTopMostEntityUnderMouse(sf::Vector2i mousePos);
+        size_t getidOftopMostEntityUnderMouse();
+
+        std::shared_ptr<Entity> getEntityFromId(size_t entityId);
 };

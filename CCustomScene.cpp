@@ -93,7 +93,7 @@ void HomeScreen::onLoad( const std::optional<std::vector<Asset>>& assets )
     }
 }
 
-void HomeScreen::sDoAction(Action input , std::vector<Request>& requests) 
+void HomeScreen::sDoAction(Action& input , std::vector<Request>& requests) 
 {
     std::cout << input.getName() << " " << input.getType() << " {" << input.getMousePos().x << "," << input.getMousePos().y << "}\n";
     if(input.getName() == "Close")

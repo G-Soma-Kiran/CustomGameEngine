@@ -4,6 +4,7 @@
 #include"CActionManager.hpp"
 #include"CAssetManager.hpp"
 #include<functional>
+#include"UISystem.hpp"
 
 class Action;
 class InputCondition;
@@ -35,10 +36,13 @@ class Scene
         bool m_isPaused = false;
         AssetManager m_assetManager;
         ActionManager m_actionManager;
+        UISystem uisystem;
         friend class SceneManager;
     public:
+        Scene():uisystem(m_entities){};
+
         ActionBinding& registerActionBinding( const std::string& actionName);
-        virtual void sDoAction(Action input , std::vector<Request>& requests) = 0;
+        virtual void sDoAction(Action& input , std::vector<Request>& requests) = 0;
         virtual void sUpdate() = 0;
         virtual void sRender(sf::RenderWindow& gameWindow) = 0;
         

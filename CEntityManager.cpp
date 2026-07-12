@@ -97,12 +97,11 @@ void EntityManager::refreshTopMostEntityUnderMouse(sf::Vector2i mousePos)
     size_t topMostEntityId = 0;
     int highestZIndex = INT_MIN;
     auto& RenderComponents = this->storage<CRender>();
-    auto& CollisionComponents = this->storage<CCollision>();
     for ( auto& entity : this->getEntities())
     {
-        if( RenderComponents.hasComponent(entity->getId()) && CollisionComponents.hasComponent(entity->getId()) )
+        if( entity->isAlive() && RenderComponents.hasComponent(entity->getId()) )
         {
-            if(CollisionComponents.getComponent(entity->getId()).localHitbox.contains( sf::Vector2f(mousePos) ) && (RenderComponents.getComponent(entity->getId()).zIndex > highestZIndex) )
+            if( RenderComponents.getComponent(entity->getId()).render && (RenderComponents.getComponent(entity->getId()).zIndex > highestZIndex) )
             {
                 highestZIndex = RenderComponents.getComponent(entity->getId()).zIndex;
                 topMostEntityId = entity->getId();
@@ -111,4 +110,32 @@ void EntityManager::refreshTopMostEntityUnderMouse(sf::Vector2i mousePos)
     }
     m_idOftopMostEntityUnderMouse = topMostEntityId;
    
+}
+size_t EntityManager::getidOftopMostEntityUnderMouse()
+{
+    return m_idOftopMostEntityUnderMouse;
+}
+
+std::shared_ptr<Entity> EntityManager::getEntityFromId(size_t entityId)
+{
+    int low = 0 ;
+    int high = static_cast<int>(m_allEntities.size()) - 1;
+    while( low <= high)
+    {
+        int mid = low + (high - low)/2;
+        if( m_allEntities[mid]->getId() == entityId )
+        {
+            if(m_allEntities[mid]->isAlive()) return m_allEntities[mid];
+            else return {};
+        }
+        else if(m_allEntities[mid]->getId() <  entityId)
+        {
+            low = mid + 1;
+        }
+        else
+        {
+            high = mid -1;
+        }
+    }
+    return {};
 }

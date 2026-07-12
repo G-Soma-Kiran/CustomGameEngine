@@ -19,6 +19,7 @@ struct ComponentStorage : IStorage
 {
     private:
         std::unordered_map<size_t , T> m_data;
+        friend class UISystem;
     public:
         void remove(size_t id) override
         {
@@ -72,7 +73,8 @@ class CRender
 {
     public:
         int zIndex = 0;
-        bool isYsorted = false;
+        bool render = true;
+    
 };
 
 class CCollision
@@ -108,20 +110,4 @@ class CDraggable
         Vector dragPosition = {0 , 0};
         sf::FloatRect localDragHitbox;
         CDraggable(sf::FloatRect rect) :localDragHitbox(rect){};
-};
-
-enum class ButtonState
-{
-    Normal,
-    Hovered,
-    Pressed,
-};
-
-class CButton
-{
-    public:
-        ButtonState currentState = ButtonState::Normal;
-        const sf::Texture& buttonTexture;
-        std::unordered_map<ButtonState , sf::IntRect> stateBoundingRects;
-        CButton(const sf::Texture& btnTexture):buttonTexture(btnTexture){};
 };
