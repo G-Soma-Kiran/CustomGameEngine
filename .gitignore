@@ -2,3 +2,4 @@ bin/
 build/
 Makefile
 *.make
+commit_message.txt
