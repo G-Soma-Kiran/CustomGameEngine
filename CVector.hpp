@@ -31,4 +31,5 @@ class Vector
         void rotate(sf::Angle angle);
 
         sf::Vector2f toVector2f() const;
+        std::string toString() const;
 };

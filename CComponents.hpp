@@ -19,7 +19,7 @@ struct ComponentStorage : IStorage
 {
     private:
         std::unordered_map<size_t , T> m_data;
-        friend class UISystem;
+        friend class EntityManager;
     public:
         void remove(size_t id) override
         {
@@ -74,7 +74,7 @@ class CRender
     public:
         int zIndex = 0;
         bool render = true;
-    
+          
 };
 
 class CCollision
@@ -110,4 +110,20 @@ class CDraggable
         Vector dragPosition = {0 , 0};
         sf::FloatRect localDragHitbox;
         CDraggable(sf::FloatRect rect) :localDragHitbox(rect){};
+};
+
+class CMouseInteraction
+{
+public:
+    sf::FloatRect localBounds;
+
+    bool enabled = true;
+
+    bool isBeingDragged = false;
+    bool isBeingHovered = false;
+
+    Vector positionWhileBeingDragged ;
+
+    CMouseInteraction(sf::FloatRect localHitbox):localBounds(localHitbox){}; 
+    
 };

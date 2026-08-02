@@ -92,24 +92,48 @@ void EntityManager::removeAllComponents(size_t id)
     }
 }
 
-void EntityManager::refreshTopMostEntityUnderMouse(sf::Vector2i mousePos)
+size_t EntityManager::findTopMostEntityIdUnderMouse(const sf::Vector2i& mousePos)
 {
     size_t topMostEntityId = 0;
     int highestZIndex = INT_MIN;
-    auto& RenderComponents = this->storage<CRender>();
-    for ( auto& entity : this->getEntities())
+    // auto& RenderComponents = this->storage<CRender>();
+    // for ( auto& entity : this->getEntities())
+    // {
+    //     if( entity->isAlive() && RenderComponents.hasComponent(entity->getId()) )
+    //     {
+    //         if( RenderComponents.getComponent(entity->getId()).render && (RenderComponents.getComponent(entity->getId()).zIndex > highestZIndex) )
+    //         {
+    //             highestZIndex = RenderComponents.getComponent(entity->getId()).zIndex;
+    //             topMostEntityId = entity->getId();
+    //         }
+    //     }
+    // }
+
+
+    //Did not check for the alive or dead of entity because the m_entities.update() (runs in scene.update() override function) would not happen unitl all actions are resolved....
+    auto& mouseInteractionComponentData = this->storage<CMouseInteraction>().m_data;
+
+    for( auto& [entityId , component] : mouseInteractionComponentData  )
     {
-        if( entity->isAlive() && RenderComponents.hasComponent(entity->getId()) )
+        if(component.enabled)
         {
-            if( RenderComponents.getComponent(entity->getId()).render && (RenderComponents.getComponent(entity->getId()).zIndex > highestZIndex) )
+            if( this->storage<CRender>().hasComponent(entityId) )
             {
-                highestZIndex = RenderComponents.getComponent(entity->getId()).zIndex;
-                topMostEntityId = entity->getId();
+                auto& renderComponentOfEntity = this->storage<CRender>().getComponent(entityId);
+                if( renderComponentOfEntity.zIndex > highestZIndex )
+                {
+                    highestZIndex = renderComponentOfEntity.zIndex;
+                    topMostEntityId = entityId;
+                }
             }
-        }
+
+        }                                                                                                                                                
     }
-    m_idOftopMostEntityUnderMouse = topMostEntityId;
-   
+    return topMostEntityId;
+}
+void EntityManager::refreshTopMostEntityIdUnderMouse(const sf::Vector2i& mousePos)
+{
+    m_idOftopMostEntityUnderMouse = findTopMostEntityIdUnderMouse(mousePos);
 }
 size_t EntityManager::getidOftopMostEntityUnderMouse()
 {

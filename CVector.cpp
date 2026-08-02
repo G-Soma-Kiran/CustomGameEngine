@@ -77,11 +77,27 @@
             return Vector(x/L , y/L);
         }
 
-        void Vector::print() const{   
+        std::string Vector::toString() const{   
             if(y>=0)
-            std::cout << x << "i + " << y << "j" << std::endl;
+            {
+                return std::format("{}i + {}j" , x , y);
+            }
             else
-            std::cout << x << "i - " << -y << "j" << std::endl;
+            {
+                return std::format("{}i - {}j" , x , -y);
+            }
+        }
+
+        void Vector::print() const{
+
+            if(y>=0)
+            {
+                std::cout << x << "i + " << y << "j" << std::endl;
+            }
+            else
+            {
+                std::cout << x << "i - " << -y << "j" << std::endl;
+            }
         }
 
         sf::Vector2f Vector::toVector2f() const

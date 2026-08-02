@@ -29,21 +29,27 @@ struct Request
 
 class Scene
 {
+    private:
+        void setSceneName(const std::string& sceneName);
+        void setSceneId(size_t sceneId);
+        void setGameClockSource(const sf::Clock& gameClock);
+        std::string m_sceneName;
+        size_t m_sceneId;
+        const sf::Clock* m_gameClockPtr = nullptr;
     protected:
-        const std::string m_id = "Default";
         EntityManager  m_entities;
         size_t m_currentFrame =0;
         bool m_isPaused = false;
         AssetManager m_assetManager;
         ActionManager m_actionManager;
-        UISystem uisystem;
+        UISystem m_uisystem; 
         friend class SceneManager;
     public:
-        Scene():uisystem(m_entities){};
+        Scene():m_uisystem(m_entities , m_actionManager){};
 
-        ActionBinding& registerActionBinding( const std::string& actionName);
-        virtual void sDoAction(Action& input , std::vector<Request>& requests) = 0;
-        virtual void sUpdate() = 0;
+        ActionBinding& registerActionBinding( const std::string& actionName , bool capturesEntity);
+        virtual void sDoAction(RefinedAction& input , std::vector<Request>& requests) = 0;
+        virtual void sUpdate(sf::Time dt) = 0;
         virtual void sRender(sf::RenderWindow& gameWindow) = 0;
         
         virtual void onLoad(const std::optional<std::vector<Asset>>& assets) = 0;
@@ -53,6 +59,9 @@ class Scene
         virtual bool updateBelow() = 0;
         virtual bool propagateEventBelow() = 0;
         virtual ~Scene() = default;
+
+        const std::string& getSceneName() const;
+        size_t getSceneId() const;
 
 };
 
@@ -90,14 +99,17 @@ class SceneManager
         void m_clearAndPushScene(const std::string& sceneName);
         void m_popAndPushScene(const std::string& sceneName);
         sf::RenderWindow& m_gameWindow;
+        size_t m_totalScenes = 0;
+        const sf::Clock& m_gameClock;
     public:
         void update();
         void sceneDoAction();
-        void sceneUpdate();
+        void sceneUpdate(sf::Time dt);
         void sceneRender(sf::RenderWindow& gameWindow);
         bool isEmpty();
-        void pollEvent(std::optional<sf::Event> opt);
-        SceneManager(const Game& game , sf::RenderWindow& gameWindow);
+        void pollEventToEdgeTriggerActions(std::optional<sf::Event> opt, sf::Time eventTriggerTime);
+        void pollEventToLevelTriggerActions(sf::Time eventTriggerTime);
+        SceneManager(const Game& game , sf::RenderWindow& gameWindow , sf::Clock& gameClock );
         void request(Request req);
         
 };

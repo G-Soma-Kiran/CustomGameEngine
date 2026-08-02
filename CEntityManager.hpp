@@ -85,8 +85,8 @@ class EntityManager
 
         void removeAllComponents(size_t id);
 
-
-        void refreshTopMostEntityUnderMouse(sf::Vector2i mousePos);
+        size_t findTopMostEntityIdUnderMouse(const sf::Vector2i& mousePos);
+        void refreshTopMostEntityIdUnderMouse(const sf::Vector2i& mousePos);
         size_t getidOftopMostEntityUnderMouse();
 
         std::shared_ptr<Entity> getEntityFromId(size_t entityId);
