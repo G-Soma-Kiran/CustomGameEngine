@@ -1,6 +1,6 @@
 #include"CActionManager.hpp"
 
-Action::Action( const std::string& name ,const ActionType type ,const sf::Vector2i& mousePos , sf::Time triggerTime ) : m_name(name) , m_type(type) , m_mousePos(mousePos) , m_triggerTime(triggerTime)
+Action::Action( const std::string& name ,const ActionType type ,const sf::Vector2i& initiateMousePos , const sf::Vector2i& triggerMousePos , sf::Time initiateTime,sf::Time triggerTime ) : m_name(name) , m_type(type) , m_initiatemousePos(initiateMousePos),m_triggerMousePos(triggerMousePos) , m_initiateTime(initiateTime) ,m_triggerTime(triggerTime)
 {
 
 }
@@ -15,10 +15,21 @@ const ActionType Action::getType() const
     return m_type;
 }
 
-const sf::Vector2i& Action::getMousePos() const
+const sf::Vector2i& Action::getInitiateMousePos() const
 {
-    return m_mousePos;
+    return m_initiatemousePos;
 }
+
+const sf::Vector2i& Action::getTriggerMousePos() const
+{
+    return m_triggerMousePos;
+}
+
+const sf::Time& Action::getInitiateTime() const
+{
+    return m_initiateTime;
+}
+
 const sf::Time& Action::getTriggerTime() const
 {
     return m_triggerTime;
@@ -49,24 +60,30 @@ void ActionManager::setDeviceState(std::optional<sf::Event> opt)
     }
     else if (const auto* mp = opt->getIf<sf::Event::MouseButtonPressed>()) {
         m_deviceState.mouseButtons[mp->button] = true;
+        m_deviceState.previousMousePos = m_deviceState.mousePos;
         m_deviceState.mousePos = mp->position;
+        m_deviceState.mouseGesture.storeInitiateEntity = mp->button;
     }
     else if (const auto* mr = opt->getIf<sf::Event::MouseButtonReleased>()) {
         m_deviceState.mouseButtons[mr->button] = false;
+        m_deviceState.previousMousePos = m_deviceState.mousePos;
         m_deviceState.mousePos = mr->position;
     }else if(const auto* mv = opt->getIf<sf::Event::MouseMoved>()){
+        m_deviceState.previousMousePos = m_deviceState.mousePos;
         m_deviceState.mousePos = mv->position;
+        m_deviceState.previousMousePositionLockTimeSave = m_deviceState.previousMousePositionLockTime;
+        m_deviceState.previousMousePositionLockTime = m_gameTimeData.m_gameTime;
     }
     m_updateMouseGestureState(opt);
 }
  
-ActionBinding& ActionManager::addBinding(const std::string& actionName , bool capturesEntity)
+ActionBinding& ActionManager::addBinding(const std::string& actionName)
 {
     if( m_actionNameToBindingIdLookupTable.contains(actionName))
     {
         throw std::runtime_error("Tried to overwrite binding : " + actionName);
     }
-    m_bindings.push_back(std::move(ActionBinding(++m_totalActionBindings , actionName , capturesEntity)));
+    m_bindings.push_back(std::move(ActionBinding(++m_totalActionBindings , actionName)));
     m_actionNameToBindingIdLookupTable[actionName] = m_totalActionBindings;
     return m_bindings.back();
 }
@@ -81,7 +98,7 @@ void ActionManager::processDeviceStateToAction()
 
     m_activeActions.erase( 
         std::remove_if( m_activeActions.begin() , m_activeActions.end() , 
-        [this](const auto actionId)
+        [this](const ActiveActionData& activeAction)
         {
             // for (const auto& binding : m_bindings)
             // {
@@ -93,15 +110,15 @@ void ActionManager::processDeviceStateToAction()
 
             // }
             // return false;
-            std::optional<size_t> indexOfBindingId = m_binarySearchForBindingThroughId(actionId);
+            std::optional<size_t> indexOfBindingId = m_binarySearchForBindingThroughId(activeAction.m_actionId);
             if(!indexOfBindingId.has_value()  )
             {
-                m_actions.emplace_back(RawActionBundle(Action(  m_deletedBindings.at(actionId).getActionName(), ActionType::Ended , m_deviceState.mousePos , m_gameTimeData.m_gameTime ) , m_deletedBindings.at(actionId) , m_deviceState.mousePos));
+                m_actions.emplace_back(RawActionBundle(Action(  m_deletedBindings.at(activeAction.m_actionId).getActionName(), ActionType::Ended , activeAction.m_initiateMousePos,activeAction.m_triggerMousePos,activeAction.m_initiateTime , activeAction.m_triggerTime ) , m_deletedBindings.at(activeAction.m_actionId) , m_deviceState.mousePos , m_gameTimeData.m_gameTime , m_deviceState.mouseGesture.storeInitiateEntity , m_deviceState.mouseGesture.storeDoubleClickFirstClickEntity));
                 return true;
             }
             else if(  !m_bindings[indexOfBindingId.value()].isTriggered(m_deviceState)  )
             {
-                m_actions.emplace_back(RawActionBundle(Action(m_bindings[indexOfBindingId.value()].getActionName(), ActionType::Ended, m_deviceState.mousePos , m_gameTimeData.m_gameTime ) , m_bindings[indexOfBindingId.value()] , m_deviceState.mousePos));
+                m_actions.emplace_back(RawActionBundle(Action(m_bindings[indexOfBindingId.value()].getActionName(), ActionType::Ended, activeAction.m_initiateMousePos,activeAction.m_triggerMousePos,activeAction.m_initiateTime , activeAction.m_triggerTime ) , m_bindings[indexOfBindingId.value()] , m_deviceState.mousePos , m_gameTimeData.m_gameTime ,  m_deviceState.mouseGesture.storeInitiateEntity , m_deviceState.mouseGesture.storeDoubleClickFirstClickEntity));
                 return true;
             }
             return false;
@@ -119,27 +136,80 @@ void ActionManager::processDeviceStateToAction()
         {
             if (binding.isTriggered(m_deviceState))
             {
-                m_actions.emplace_back(RawActionBundle(Action(binding.getActionName(), ActionType::Pulsed, binding.getGesture().value()->mousePosAtGestureStart(m_deviceState) , m_gameTimeData.m_gameTime) , binding , m_deviceState.mousePos));
+                m_actions.emplace_back(RawActionBundle(Action(binding.getActionName(), ActionType::Pulsed, binding.getGesture().value()->initiationPositionAndTime(m_deviceState).m_position ,m_deviceState.mousePos , binding.getGesture().value()->initiationPositionAndTime(m_deviceState).m_time , m_gameTimeData.m_gameTime) , binding , m_deviceState.mousePos , m_gameTimeData.m_gameTime ,  m_deviceState.mouseGesture.storeInitiateEntity , m_deviceState.mouseGesture.storeDoubleClickFirstClickEntity));
             }
             continue;
         }
 
         if (!binding.isTriggered(m_deviceState)) continue;
 
-        bool isActive = std::find(m_activeActions.begin(), m_activeActions.end(),binding.getId()) != m_activeActions.end();
+        bool isActive = false ;//std::find(m_activeActions.begin(), m_activeActions.end(),binding.getId()) != m_activeActions.end();
+        for(auto& activeAction :  m_activeActions)
+        {
+            if(activeAction.m_actionId == binding.getId())
+            {
+                isActive = true;
+                break;
+            }
+        }
 
         if (!isActive)
         {
-            m_activeActions.push_back(binding.getId());    
             if(binding.getGesture().has_value())
-                m_actions.emplace_back(RawActionBundle(Action(binding.getActionName(), ActionType::Started, binding.getGesture().value()->mousePosAtGestureStart(m_deviceState) , m_gameTimeData.m_gameTime) , binding , m_deviceState.mousePos));
+            {
+                
+
+                if(binding.getGesture().value()->getConditionName() == conditionName::MouseOverCondition )
+                {
+                    m_activeActions.push_back(
+                        ActiveActionData(
+                            binding.getId(),
+                            m_deviceState.mousePos,
+                            m_deviceState.mousePos,
+                            m_gameTimeData.m_gameTime,
+                            m_gameTimeData.m_gameTime
+                        )
+                    );
+                    m_actions.emplace_back(RawActionBundle(Action(binding.getActionName(), ActionType::Started, m_deviceState.mousePos ,m_deviceState.mousePos,m_gameTimeData.m_gameTime, m_gameTimeData.m_gameTime) , binding , m_deviceState.mousePos , m_gameTimeData.m_gameTime , m_deviceState.mouseGesture.storeInitiateEntity , m_deviceState.mouseGesture.storeDoubleClickFirstClickEntity));
+                }
+                else
+                {
+                        m_activeActions.push_back(
+                        ActiveActionData(
+                            binding.getId(),
+                            binding.getGesture().value()->initiationPositionAndTime(m_deviceState).m_position,
+                            m_deviceState.mousePos,
+                            binding.getGesture().value()->initiationPositionAndTime(m_deviceState).m_time,
+                            m_gameTimeData.m_gameTime
+                        )
+                    );
+                    m_actions.emplace_back(RawActionBundle(Action(binding.getActionName(), ActionType::Started, binding.getGesture().value()->initiationPositionAndTime(m_deviceState).m_position ,m_deviceState.mousePos,binding.getGesture().value()->initiationPositionAndTime(m_deviceState).m_time, m_gameTimeData.m_gameTime) , binding , m_deviceState.mousePos , m_gameTimeData.m_gameTime ,  m_deviceState.mouseGesture.storeInitiateEntity , m_deviceState.mouseGesture.storeDoubleClickFirstClickEntity));
+
+                }
+            }
             else
-                m_actions.emplace_back(RawActionBundle(Action(binding.getActionName(), ActionType::Started, m_deviceState.mousePos , m_gameTimeData.m_gameTime) , binding , m_deviceState.mousePos));
+            {
+                m_activeActions.push_back(
+                        ActiveActionData(
+                            binding.getId(),
+                            m_deviceState.mousePos,
+                            m_deviceState.mousePos,
+                            m_gameTimeData.m_gameTime,
+                            m_gameTimeData.m_gameTime
+                        )
+                    );
+                m_actions.emplace_back(RawActionBundle(Action(binding.getActionName(), ActionType::Started, m_deviceState.mousePos ,m_deviceState.mousePos,m_gameTimeData.m_gameTime, m_gameTimeData.m_gameTime) , binding , m_deviceState.mousePos ,m_gameTimeData.m_gameTime , m_deviceState.mouseGesture.storeInitiateEntity , m_deviceState.mouseGesture.storeDoubleClickFirstClickEntity));
+            }
+            // m_activeActions.push_back(binding.getId());    
+            // if(binding.getGesture().has_value())
+            //     m_actions.emplace_back(RawActionBundle(Action(binding.getActionName(), ActionType::Started, binding.getGesture().value()->mousePosAtGestureStart(m_deviceState) , m_gameTimeData.m_gameTime) , binding , m_deviceState.mousePos));
+            // else
+            //     m_actions.emplace_back(RawActionBundle(Action(binding.getActionName(), ActionType::Started, m_deviceState.mousePos , m_gameTimeData.m_gameTime) , binding , m_deviceState.mousePos));
                 
         }
     }
 
-        m_deviceState.mouseGesture.prepeareForNextEvent();
+        m_deviceState.mouseGesture.prepareForNextEvent();
 }
 
 std::vector<RawActionBundle> ActionManager::getActions()
@@ -201,7 +271,8 @@ void ActionManager::m_updateMouseGestureState( std::optional<sf::Event> opt )
         // {
         //     m_deviceState.mouseGesture.dragAnchor = mp->position;
         // }
-        m_deviceState.mouseGesture.clickOrDragAnchors[mp->button] = mp->position;
+        // m_deviceState.mouseGesture.clickOrDragAnchors[mp->button] = {mp->position , m_gameTimeData.m_gameTime};
+        m_deviceState.mouseGesture.clickOrDragAnchors.insert_or_assign(mp->button , ActionPositionAndTime{mp->position , m_gameTimeData.m_gameTime});
         m_deviceState.mouseGesture.numberOfMouseButtonsHeld++;
     }
     else if (const auto* mr = opt->getIf<sf::Event::MouseButtonReleased>()) 
@@ -228,14 +299,17 @@ void ActionManager::m_updateMouseGestureState( std::optional<sf::Event> opt )
             if(m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickTriggerTime == sf::Time::Zero || (m_gameTimeData.m_currentEventTime - m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickTriggerTime).asMilliseconds() > 300.0f 
                 || distanceGreaterThanThreshold(mr->position , m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickPosition.value()))
             {
-                m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickPosition = m_deviceState.mouseGesture.clickOrDragAnchors[mr->button];
+                // m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickPosition = m_deviceState.mouseGesture.clickOrDragAnchors[mr->button];
+                m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickPosition = mr->position;
                 m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickTriggerTime = m_gameTimeData.m_currentEventTime;
                 m_deviceState.mouseGesture.isDoubleClick.reset();
+                m_deviceState.mouseGesture.storeDoubleClickFirstClickEntity = mr->button;
+
             }
             else
             {
                 m_deviceState.mouseGesture.isDoubleClick.doubleClickButton = mr->button;
-                m_deviceState.mouseGesture.isDoubleClick.anchorPosition = m_deviceState.mouseGesture.clickOrDragAnchors[mr->button];
+                m_deviceState.mouseGesture.isDoubleClick.anchorPosition = m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickPosition;
                 m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button] = {};
             }
         }
@@ -281,7 +355,14 @@ void ActionManager::m_updateMouseGestureState( std::optional<sf::Event> opt )
             m_deviceState.mouseGesture.transientDraggingMouseButton = mr->button;
         }
         m_deviceState.mouseGesture.draggingStatus[mr->button] = false;
-        m_deviceState.mouseGesture.clickAnchorSave = m_deviceState.mouseGesture.clickOrDragAnchors[mr->button];
+        // m_deviceState.mouseGesture.clickAnchorSave = m_deviceState.mouseGesture.clickOrDragAnchors[mr->button];
+        auto it = m_deviceState.mouseGesture.clickOrDragAnchors.find(mr->button);
+
+        if (it != m_deviceState.mouseGesture.clickOrDragAnchors.end())
+            m_deviceState.mouseGesture.clickAnchorSave = it->second;
+        else
+            m_deviceState.mouseGesture.clickAnchorSave = std::nullopt;
+            
         m_deviceState.mouseGesture.clickOrDragAnchors.erase(mr->button);
 
 
@@ -303,8 +384,8 @@ void ActionManager::m_updateMouseGestureState( std::optional<sf::Event> opt )
         {
             if( m_deviceState.mouseGesture.draggingStatus[MouseButton] ) continue;
 
-            int deltaX = std::abs( mv->position.x - AnchorPosition.x );
-            int deltaY = std::abs( mv->position.y - AnchorPosition.y );
+            int deltaX = std::abs( mv->position.x - AnchorPosition.m_position.x );
+            int deltaY = std::abs( mv->position.y - AnchorPosition.m_position.y );
 
             if( deltaX*deltaX + deltaY*deltaY > 25 )
             {
@@ -323,7 +404,7 @@ void ActionManager::m_updateMouseGestureState( std::optional<sf::Event> opt )
 
 void ActionManager::processOngoingActions()
 {
-    for( auto activeActionId : m_activeActions )
+    for( auto activeAction : m_activeActions )
     {
         // for ( auto& binding : m_bindings)
         // {
@@ -334,13 +415,12 @@ void ActionManager::processOngoingActions()
         //     }   
         // }
 
-        std::optional<size_t> indexOfBindingId = m_binarySearchForBindingThroughId(activeActionId);
-        m_actions.emplace_back(RawActionBundle(Action(m_bindings[*indexOfBindingId].getActionName(), ActionType::OnGoing, m_deviceState.mousePos , m_gameTimeData.m_gameTime) , m_bindings[*indexOfBindingId] , m_deviceState.mousePos));
+        std::optional<size_t> indexOfBindingId = m_binarySearchForBindingThroughId(activeAction.m_actionId);
+        m_actions.emplace_back(RawActionBundle(Action(m_bindings[*indexOfBindingId].getActionName(), ActionType::OnGoing, activeAction.m_initiateMousePos , activeAction.m_triggerMousePos , activeAction.m_initiateTime , activeAction.m_triggerTime) , m_bindings[*indexOfBindingId] , m_deviceState.mousePos ,m_gameTimeData.m_gameTime , m_deviceState.mouseGesture.storeInitiateEntity , m_deviceState.mouseGesture.storeDoubleClickFirstClickEntity ));
         
     }
     
 } 
-
 
 void ActionManager::m_updateGameTimeData(sf::Time eventTriggerTime , bool isScenePaused)
 {
@@ -428,3 +508,22 @@ void ActionManager::deleteBinding(std::string& actionName)
         throw std::runtime_error(std::format("No binding found to delete for action with name : {}" , actionName));
     }
 }
+
+bool ActionManager::isBindingPresent(size_t bindingId)
+{
+    std::optional<size_t> bindingIdIndexIn_m_bindings = m_binarySearchForBindingThroughId(bindingId);
+    if(bindingIdIndexIn_m_bindings.has_value()) return true;
+    
+    return false;
+}
+
+bool ActionManager::isBindingPresent(std::string& actionName)
+{
+    if( m_actionNameToBindingIdLookupTable.contains(actionName) )
+    {
+        return isBindingPresent( m_actionNameToBindingIdLookupTable[actionName]);
+    }
+    
+    return false;
+}
+

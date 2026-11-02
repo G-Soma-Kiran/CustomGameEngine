@@ -3,3 +3,4 @@ build/
 Makefile
 *.make
 commit_message.txt
+todo.txt

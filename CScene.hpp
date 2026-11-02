@@ -47,7 +47,7 @@ class Scene
     public:
         Scene():m_uisystem(m_entities , m_actionManager){};
 
-        ActionBinding& registerActionBinding( const std::string& actionName , bool capturesEntity);
+        ActionBinding& registerActionBinding( const std::string& actionName);
         virtual void sDoAction(RefinedAction& input , std::vector<Request>& requests) = 0;
         virtual void sUpdate(sf::Time dt) = 0;
         virtual void sRender(sf::RenderWindow& gameWindow) = 0;

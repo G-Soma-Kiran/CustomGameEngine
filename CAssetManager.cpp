@@ -23,7 +23,11 @@ void AssetManager::addTexture( const std::string& textureName , const std::strin
 
 const sf::Texture& AssetManager::getTexture(const std::string& textureName) const
 {
-    return m_textures.at(textureName);
+    if(m_textures.contains(textureName))
+        return m_textures.at(textureName);
+    else
+        throw std::runtime_error(std::format("There is no texture named {} in AssetManager\n" , textureName));
+
 }
 
 void AssetManager::loadAssets( const std::optional<std::vector<Asset>>& assets )

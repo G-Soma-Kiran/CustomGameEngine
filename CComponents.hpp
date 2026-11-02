@@ -37,11 +37,18 @@ struct ComponentStorage : IStorage
 
         T& getComponent(size_t id)
         {
-            return m_data.at(id);
+            if(m_data.contains(id))
+                return m_data.at(id);
+            else
+                throw std::runtime_error(std::format("There is no component of type : {} and id : {}" , typeid(T).name() , id));
         }
+
         const T& getComponent(size_t id) const
         {
-            return m_data.at(id);
+            if(m_data.contains(id))
+                return m_data.at(id);
+            else
+                throw std::runtime_error(std::format("There is no component of type : {} and id : {}" , typeid(T).name() , id));
         }
 
         

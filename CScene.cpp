@@ -93,9 +93,9 @@ void SceneManager::sceneDoAction()
     }
 }
 
-ActionBinding& Scene::registerActionBinding( const std::string& actionName  , bool capturesEntity)
+ActionBinding& Scene::registerActionBinding( const std::string& actionName)
 {
-    return m_actionManager.addBinding(actionName , capturesEntity);
+    return m_actionManager.addBinding(actionName);
 }
 
 void SceneManager::pollEventToEdgeTriggerActions(std::optional<sf::Event> opt , sf::Time eventTriggerTime)

@@ -26,46 +26,46 @@ void HomeScreen::onLoad( const std::optional<std::vector<Asset>>& assets )
     m_assetManager.loadAssets(assets);
 
     {
-        ActionBinding& binding = this->registerActionBinding("LeftClick" , false);
+        ActionBinding& binding = this->registerActionBinding("LeftClick");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::Click , sf::Mouse::Button::Left);
     }
     {
-        ActionBinding& binding = this->registerActionBinding("RightClick" , false);
+        ActionBinding& binding = this->registerActionBinding("RightClick");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::Click , sf::Mouse::Button::Right);
     }
     {
-        ActionBinding& binding = this->registerActionBinding("MiddleClick" , false);
+        ActionBinding& binding = this->registerActionBinding("MiddleClick");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::Click , sf::Mouse::Button::Middle);
     }
     {
-        ActionBinding& binding = this->registerActionBinding("LeftDrag", true);
+        ActionBinding& binding = this->registerActionBinding("LeftDrag");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::Drag , sf::Mouse::Button::Left);
         binding.addCondition<ModifierCondition>(false, false , false);
     }
     {
-        ActionBinding& binding = this->registerActionBinding("RightDrag" , true);
+        ActionBinding& binding = this->registerActionBinding("RightDrag");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::Drag , sf::Mouse::Button::Right);
         binding.addCondition<ModifierCondition>(false, false , false);
     }
     {
-        ActionBinding& binding = this->registerActionBinding("MiddleDrag" , true);
+        ActionBinding& binding = this->registerActionBinding("MiddleDrag");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::Drag , sf::Mouse::Button::Middle);
         binding.addCondition<ModifierCondition>(false, false , false);
     }
     {
-        ActionBinding& binding = this->registerActionBinding("LeftDoubleClick" , false);
+        ActionBinding& binding = this->registerActionBinding("LeftDoubleClick");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::DoubleClick  , sf::Mouse::Button::Left);
     }
     {
-        ActionBinding& binding = this->registerActionBinding("RightDoubleClick" , false);
+        ActionBinding& binding = this->registerActionBinding("RightDoubleClick");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::DoubleClick  , sf::Mouse::Button::Right);
     }
     {
-        ActionBinding& binding = this->registerActionBinding("MiddleDoubleClick" , false);
+        ActionBinding& binding = this->registerActionBinding("MiddleDoubleClick");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::DoubleClick  , sf::Mouse::Button::Middle);
     }
     {   
-        ActionBinding& binding = this->registerActionBinding("MouseMoved" , false);
+        ActionBinding& binding = this->registerActionBinding("MouseMoved");
         binding.setGesture<MouseGestureCondition>(mouseGestureType::MouseMoved);
     }
 
@@ -87,7 +87,7 @@ void HomeScreen::onLoad( const std::optional<std::vector<Asset>>& assets )
     // ActionBinding& mouseLeftDown = this->registerActionBinding("MouseLeftDown");
     // mouseLeftDown.addCondition<MouseKeyCondition>(sf::Mouse::Button::Left);
 
-    ActionBinding& closeBinding = this->registerActionBinding("Close" , false);
+    ActionBinding& closeBinding = this->registerActionBinding("Close");
     closeBinding.addCondition<KeyCondition>(sf::Keyboard::Key::Escape);
     closeBinding.addCondition<ModifierCondition>(false , false , false);
 
@@ -143,9 +143,58 @@ void HomeScreen::sDoAction(RefinedAction& input , std::vector<Request>& requests
                 return "Pulsed";  
         }
     };
-    if(input.getType() != ActionType::OnGoing)
-        std::cout << std::format("{} , {} , {} , {} , {}\n" ,input.getName() ,actionTypeToString(input.getType()) , Vector(input.getMousePos().x , input.getMousePos().y).toString() , input.getTriggerTime().asSeconds() , input.getEntityId() );
-        
+    // if(input.getType() != ActionType::OnGoing)
+    //     std::cout << std::format("{} , {} , {} , {} , {}\n" ,input.getName() ,actionTypeToString(input.getType()) , Vector(input.getMousePos().x , input.getMousePos().y).toString() , input.getTriggerTime().asSeconds() , input.getEntityId() );
+    
+//     std::cout << std::format(
+//     "Name : {}\n"
+//     "Type : {}\n"
+//     "Initiate Mouse Pos : ({}, {})\n"
+//     "Trigger Mouse Pos : ({}, {})\n"
+//     "Initiate Time : {}\n"
+//     "Trigger Time : {}\n"
+//     "Initiate Entity ID : {}\n"
+//     "Trigger Entity ID : {}\n",
+//     input.getName(),
+//     input.getType(),
+//     input.getInitiateMousePos().x,
+//     input.getInitiateMousePos().y,
+//     input.getTriggerMousePos().x,
+//     input.getTriggerMousePos().y,
+//     input.getInitiateTime().asSeconds(),
+//     input.getTriggerTime().asSeconds(),
+//     input.getInitiateEntityId(),
+//     input.getTriggerEntityId()
+// );
+// std::cout << std::format("currPos : {}\ncurrTime : {}\n\n\n\n" ,  m_uisystem.getMousePos() , m_uisystem.getTime().asSeconds());
+
+std::cout << std::format(
+    "Name : {}\n"
+    "Type : {}\n"
+    "Initiate Mouse Pos : ({}, {})\n"
+    "Trigger Mouse Pos : ({}, {})\n"
+    "Initiate Time : {}\n"
+    "Trigger Time : {}\n"
+    "Initiate Entity ID : {}\n"
+    "Trigger Entity ID : {}\n",
+    input.getName(),
+    static_cast<int>(input.getType()), // Cast enum to int (or use a string conversion)
+    input.getInitiateMousePos().x,
+    input.getInitiateMousePos().y,
+    input.getTriggerMousePos().x,
+    input.getTriggerMousePos().y,
+    input.getInitiateTime().asSeconds(),
+    input.getTriggerTime().asSeconds(),
+    input.getInitiateEntityId(),
+    input.getTriggerEntityId()
+);
+
+// And for your mouse position log:
+auto mousePos = m_uisystem.getMousePos();
+std::cout << std::format("currPos : ({}, {})\ncurrTime : {}\n\n\n\n", 
+    mousePos.x, mousePos.y, m_uisystem.getTime().asSeconds());
+
+
     if(input.getName() == "Close" && input.getType() == ActionType::Started)
     {
         requests.push_back(Request(RequestCommand::Pop , "Default"));

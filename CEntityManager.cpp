@@ -92,7 +92,7 @@ void EntityManager::removeAllComponents(size_t id)
     }
 }
 
-size_t EntityManager::findTopMostEntityIdUnderMouse(const sf::Vector2i& mousePos)
+size_t EntityManager::  findTopMostEntityIdUnderMouse(const sf::Vector2i& mousePos)
 {
     size_t topMostEntityId = 0;
     int highestZIndex = INT_MIN;

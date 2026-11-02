@@ -23,14 +23,44 @@ class Action
     private:
         std::string m_name;
         ActionType m_type; 
-        sf::Vector2i m_mousePos;
+        sf::Vector2i m_initiatemousePos;
+        sf::Vector2i m_triggerMousePos;
+        sf::Time m_initiateTime;
         sf::Time m_triggerTime;
     public:
-        Action(const std::string& name ,const ActionType type , const sf::Vector2i& mousePos , sf::Time triggerTime);
+        Action(const std::string& name ,const ActionType type , const sf::Vector2i& initiateMousePos, const sf::Vector2i& triggerMousePos , sf::Time initiateTime,sf::Time triggerTime);
         const std::string& getName() const;
         const ActionType getType() const;
-        const sf::Vector2i& getMousePos() const;
+        const sf::Vector2i& getTriggerMousePos() const;
+        const sf::Vector2i& getInitiateMousePos() const;
+        const sf::Time& getInitiateTime() const;
         const sf::Time& getTriggerTime() const;
+
+};
+
+class ActionPositionAndTime
+{
+    public:
+        sf::Vector2i m_position;
+        sf::Time m_time;
+        ActionPositionAndTime(const sf::Vector2i position , const sf::Time time) : m_position(position) , m_time(time)
+        {
+
+        }
+};
+
+class ActiveActionData
+{
+    public:
+        size_t m_actionId;
+        sf::Vector2i m_initiateMousePos;
+        sf::Vector2i m_triggerMousePos;
+        sf::Time m_initiateTime;
+        sf::Time m_triggerTime;
+        ActiveActionData(size_t actionId,sf::Vector2i initiateMousePos,sf::Vector2i triggerMousePos,sf::Time initiateTime,sf::Time triggerTime):m_actionId(actionId) , m_initiateMousePos(initiateMousePos) , m_triggerMousePos(triggerMousePos) , m_initiateTime(initiateTime) , m_triggerTime(triggerTime)
+        {
+
+        }
 
 };
 
@@ -51,11 +81,11 @@ struct mouseGestureState
 
     size_t numberOfMouseButtonsHeld = 0;
 
-    std::unordered_map<sf::Mouse::Button , sf::Vector2i> clickOrDragAnchors;
+    std::unordered_map<sf::Mouse::Button , ActionPositionAndTime > clickOrDragAnchors;
     std::unordered_map<sf::Mouse::Button , bool > draggingStatus;
     std::optional<sf::Mouse::Button> transientDraggingMouseButton;
 
-    std::optional<sf::Vector2i> clickAnchorSave;
+    std::optional<ActionPositionAndTime> clickAnchorSave;
 
     struct DoubleClickData
     {
@@ -68,16 +98,20 @@ struct mouseGestureState
     {
         std::optional<sf::Mouse::Button> doubleClickButton;
         std::optional<sf::Vector2i> anchorPosition;
+        std::optional<sf::Time> inititateTime;
 
         void reset()
         {
             doubleClickButton.reset();
             anchorPosition.reset();
+            inititateTime.reset();
         }
     }isDoubleClick;
 
+    std::optional<sf::Mouse::Button> storeInitiateEntity;
+    std::optional<sf::Mouse::Button> storeDoubleClickFirstClickEntity;
 
-    void prepeareForNextEvent()
+    void prepareForNextEvent()
     {
         // if (isMouseMoveEvent)
         //     outOfWindowHoverBug = false;
@@ -89,6 +123,10 @@ struct mouseGestureState
         isDoubleClick.reset();
 
         clickAnchorSave.reset();
+
+        storeInitiateEntity.reset();
+
+        storeDoubleClickFirstClickEntity.reset();
     }
 };
 
@@ -100,6 +138,9 @@ struct DeviceState
     bool shift = false;
     bool alt = false;
     sf::Vector2i mousePos = {-100 , -100};
+    sf::Vector2i previousMousePos = mousePos;
+    sf::Time previousMousePositionLockTime = sf::Time::Zero;
+    sf::Time previousMousePositionLockTimeSave = sf::Time::Zero;
 
     size_t numberOfKeyboardKeysHeld = 0;
     
@@ -149,8 +190,10 @@ class GestureCondition
         virtual ~GestureCondition() = default;
         virtual bool isSatisfied(const DeviceState& state) const = 0;
         virtual gestureType type() const = 0;
-        virtual sf::Vector2i mousePosAtGestureStart(const DeviceState& state) const = 0;
+        virtual ActionPositionAndTime initiationPositionAndTime(const DeviceState& state) const = 0;
         virtual conditionName getConditionName() const = 0; 
+        virtual std::optional<mouseGestureType> getMouseGestureType() const{return std::nullopt;}
+        virtual std::optional<sf::Mouse::Button> getMouseButton() const {return std::nullopt;}
 };
 
 class KeyCondition : public InputCondition {
@@ -249,7 +292,7 @@ class MouseGestureCondition : public GestureCondition
                 return gestureType::NonPulse;
             }
         }
-        sf::Vector2i mousePosAtGestureStart(const DeviceState& state) const override
+        ActionPositionAndTime initiationPositionAndTime(const DeviceState& state) const override
         {
             if( m_gesture == mouseGestureType::Drag)
             {
@@ -261,12 +304,21 @@ class MouseGestureCondition : public GestureCondition
             }
             else if(  m_gesture == mouseGestureType::DoubleClick )
             {
-                return state.mouseGesture.isDoubleClick.anchorPosition.value();
+                return {state.mouseGesture.isDoubleClick.anchorPosition.value() , state.mouseGesture.isDoubleClick.inititateTime.value()};
             }
-            else
+            else if(m_gesture == mouseGestureType::MouseMoved)
             {
-                return state.mousePos;
+                return {state.previousMousePos , state.previousMousePositionLockTimeSave};
             }
+        }
+
+        std::optional<mouseGestureType> getMouseGestureType() const override
+        {
+            return m_gesture;
+        }
+        std::optional<sf::Mouse::Button> getMouseButton() const override
+        {
+            return m_mouseButton;
         }
 
 
@@ -286,9 +338,10 @@ class MouseOverCondition : public GestureCondition
         conditionName getConditionName() const override{
             return conditionName::MouseOverCondition;
         }
-        sf::Vector2i mousePosAtGestureStart(const DeviceState& state) const override
+        
+        ActionPositionAndTime initiationPositionAndTime(const DeviceState& state) const override
         {
-            return state.mousePos;
+            return {{} , {}};
         }
 };
 
@@ -319,12 +372,11 @@ class ActionBinding
     private:
         BindingInternals m_internals;
         bool m_isEnabled = true;
-        bool m_capturesEntityOnTrigger = false;
         std::vector<std::unique_ptr<InputCondition>> m_conditions;
         std::optional<std::unique_ptr<GestureCondition>> m_gesture;
     public:
 
-    ActionBinding(const size_t id , const std::string& actionName , bool capturesEntity ) : m_internals(id , actionName) , m_capturesEntityOnTrigger(capturesEntity){};
+    ActionBinding(const size_t id , const std::string& actionName ) : m_internals(id , actionName) {};
 
     bool hasPulseGesture() const
     {
@@ -413,10 +465,6 @@ class ActionBinding
         m_gesture.reset();
     }
 
-    bool getCaptureEntityFlag() const
-    {
-        return m_capturesEntityOnTrigger;
-    }
     
 };
 
@@ -426,8 +474,17 @@ class RawActionBundle
         const Action m_action ;
         const ActionBinding& m_actionBinding;
         const sf::Vector2i m_currentMousePos;
+        const sf::Time m_currentTime;
+        const std::optional<sf::Mouse::Button> m_storeInitiateEntitySignal;
+        const std::optional<sf::Mouse::Button> m_storeDoubleClickFirstClickEntitySignal;
     public:
-        RawActionBundle(const Action& action , const ActionBinding& actionBinding ,const sf::Vector2i currentMousePos) : m_action(action) ,  m_actionBinding(actionBinding) , m_currentMousePos(currentMousePos){};
+        RawActionBundle(const Action& action , 
+            const ActionBinding& actionBinding ,
+            const sf::Vector2i currentMousePos , 
+            const sf::Time currentTime,
+            const std::optional<sf::Mouse::Button> storeInitiateEntitySignal,
+            const std::optional<sf::Mouse::Button> storeDoubleClickFirstClickEntitySignal
+        ) : m_action(action) ,  m_actionBinding(actionBinding) , m_currentMousePos(currentMousePos) ,m_currentTime(currentTime) , m_storeInitiateEntitySignal(storeInitiateEntitySignal) , m_storeDoubleClickFirstClickEntitySignal(storeDoubleClickFirstClickEntitySignal){};
 
         const ActionBinding& getBinding() const
         {
@@ -440,6 +497,18 @@ class RawActionBundle
         const sf::Vector2i& getCurrentMousePos() const
         {
             return m_currentMousePos;
+        }
+        const sf::Time& getCurrentTime() const
+        {
+            return m_currentTime;
+        }
+        const std::optional<sf::Mouse::Button> getStoreInitiateEntitySignal() const
+        {
+            return m_storeInitiateEntitySignal;
+        }
+        const std::optional<sf::Mouse::Button> getStoreDoubleClickFirstClickEntitySignal() const
+        {
+            return m_storeDoubleClickFirstClickEntitySignal;
         }
 };
 
@@ -461,7 +530,7 @@ class ActionManager
 
 
         DeviceState m_deviceState;
-        std::vector<size_t> m_activeActions; //changed from unordered set to vector for queue behaviour of non active actions.
+        std::vector<ActiveActionData> m_activeActions; //changed from unordered set to vector for queue behaviour of non active actions.
         std::vector<ActionBinding> m_bindings;
         std::vector<RawActionBundle> m_actions;
         std::unordered_map<std::string , size_t> m_actionNameToBindingIdLookupTable; 
@@ -478,11 +547,13 @@ class ActionManager
 
         friend class SceneManager;
     public:
-        ActionBinding& addBinding(const std::string& actionName , bool capturesEntity);
+        ActionBinding& addBinding(const std::string& actionName);
         ActionBinding& getBinding(size_t bindingId);
         ActionBinding& getBinding(std::string& actionName);
         void deleteBinding(size_t bindingId);
         void deleteBinding(std::string& actionName);
+        bool isBindingPresent(size_t bindingId);
+        bool isBindingPresent(std::string& actionName);
 
         void forceFireAction(const Action& action);
     
