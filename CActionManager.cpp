@@ -302,6 +302,7 @@ void ActionManager::m_updateMouseGestureState( std::optional<sf::Event> opt )
                 // m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickPosition = m_deviceState.mouseGesture.clickOrDragAnchors[mr->button];
                 m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickPosition = mr->position;
                 m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickTriggerTime = m_gameTimeData.m_currentEventTime;
+                m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickGameTime = m_gameTimeData.m_gameTime;
                 m_deviceState.mouseGesture.isDoubleClick.reset();
                 m_deviceState.mouseGesture.storeDoubleClickFirstClickEntity = mr->button;
 
@@ -310,6 +311,7 @@ void ActionManager::m_updateMouseGestureState( std::optional<sf::Event> opt )
             {
                 m_deviceState.mouseGesture.isDoubleClick.doubleClickButton = mr->button;
                 m_deviceState.mouseGesture.isDoubleClick.anchorPosition = m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickPosition;
+                m_deviceState.mouseGesture.isDoubleClick.inititateTime = m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button].firstClickGameTime;
                 m_deviceState.mouseGesture.doubleClickFirstClickTimeStamps[mr->button] = {};
             }
         }
@@ -436,8 +438,8 @@ void ActionManager::m_updateGameTimeData(sf::Time eventTriggerTime , bool isScen
 
 std::optional<size_t> ActionManager::m_binarySearchForBindingThroughId(size_t bindingId)
 {
-    size_t low = 0 , high = m_bindings.size() -  1;
-    while(low <= high)
+    size_t low = 0 , high = m_bindings.size();
+    while(low < high)
     {
         size_t mid = low + (high - low)/2;
         if(m_bindings[mid].getId() == bindingId )
@@ -450,10 +452,10 @@ std::optional<size_t> ActionManager::m_binarySearchForBindingThroughId(size_t bi
         }
         else
         {
-            high = mid-1;
+            high = mid;
         }
     }
-    return {};
+    return std::nullopt;
 }
 
 ActionBinding& ActionManager::getBinding(size_t bindingId)

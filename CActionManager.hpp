@@ -90,6 +90,7 @@ struct mouseGestureState
     struct DoubleClickData
     {
         sf::Time firstClickTriggerTime = sf::Time::Zero;
+        sf::Time firstClickGameTime = sf::Time::Zero;
         std::optional<sf::Vector2i> firstClickPosition = {};
     };
     std::unordered_map<sf::Mouse::Button , DoubleClickData> doubleClickFirstClickTimeStamps;
