@@ -8,6 +8,7 @@ struct Asset
     std::string name;
     std::string type;
     std::string filePath;
+    Asset(const std::string& name , const std::string& type , const std::string& filePath) : name(name) , type(type) , filePath(filePath){} 
 };
 
 class AssetManager

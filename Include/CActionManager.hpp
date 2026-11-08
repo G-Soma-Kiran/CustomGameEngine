@@ -16,6 +16,7 @@ enum class ActionType
     OnGoing,
     Ended,
     Pulsed,
+    Cancelled
 };
 
 class Action
@@ -466,6 +467,11 @@ class ActionBinding
         m_gesture.reset();
     }
 
+    bool isEnabled() const
+    {
+        return m_isEnabled;
+    }
+
     
 };
 
@@ -542,9 +548,11 @@ class ActionManager
         void m_updateMouseGestureState( std::optional<sf::Event> opt );
         size_t m_totalActionBindings = 0;
         void setDeviceState( std::optional<sf::Event> opt);
-        void processDeviceStateToAction();
+        void processDeviceStateToAction(bool forceCancel=false);
         std::vector<RawActionBundle> getActions();
         void processOngoingActions();
+        void m_cleanActiveActions(bool forceCancel);
+        void m_commitNewActions();
 
         friend class SceneManager;
     public:
@@ -557,6 +565,8 @@ class ActionManager
         bool isBindingPresent(std::string& actionName);
 
         void forceFireAction(const Action& action);
+
+        void releaseAllInput();
     
 };
 

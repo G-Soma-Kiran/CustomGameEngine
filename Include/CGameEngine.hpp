@@ -19,6 +19,7 @@ class Engine
         sf::Time m_currentFrameStartTime = sf::Time::Zero;
         sf::Time m_previousFrameStartTime = sf::Time::Zero;
         void init();
+        std::string m_defaultScene;
     public:
         Engine(const Game& game);
         void run();  

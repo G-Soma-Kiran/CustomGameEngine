@@ -43,12 +43,13 @@ class Scene
         AssetManager m_assetManager;
         ActionManager m_actionManager;
         UISystem m_uisystem; 
+        std::vector<Request> m_requests;
         friend class SceneManager;
     public:
         Scene():m_uisystem(m_entities , m_actionManager){};
 
         ActionBinding& registerActionBinding( const std::string& actionName);
-        virtual void sDoAction(RefinedAction& input , std::vector<Request>& requests) = 0;
+        virtual void sDoAction(RefinedAction& input) = 0;
         virtual void sUpdate(sf::Time dt) = 0;
         virtual void sRender(sf::RenderWindow& gameWindow) = 0;
         
@@ -57,7 +58,6 @@ class Scene
         
         virtual bool renderBelow() = 0;
         virtual bool updateBelow() = 0;
-        virtual bool propagateEventBelow() = 0;
         virtual ~Scene() = default;
 
         const std::string& getSceneName() const;
@@ -71,6 +71,7 @@ class Game
     private:
         std::unordered_map<std::string , std::function<std::unique_ptr<Scene>()>> m_sceneMakers;
         std::unordered_map<std::string , std::vector<Asset>> m_gameAssets;
+        std::string m_defaultScene;
     public:
         template<typename sceneDerivative>
         void addSceneMaker(const std::string& sceneName)
@@ -84,7 +85,8 @@ class Game
         bool hasAssets( const std::string& sceneName ) const;
         std::unique_ptr<Scene> makeScene(const std::string& sceneName) const;
         const std::optional<std::vector<Asset>> getAssetsForScene( const std::string& sceneName ) const;
-        // Game();
+        Game(const std::string& defaultScene) : m_defaultScene(defaultScene){}
+        std::string getDefaultScene() const;
 };
 
 class SceneManager
@@ -93,6 +95,7 @@ class SceneManager
         std::vector< std::unique_ptr<Scene>> m_sceneStack;   
         std::vector<Request> m_toUpdate;
         const Game& m_game;
+        void m_activateTopScene();
         void m_pushScene(const std::string& sceneName);
         void m_popScene();
         void m_clearScenes();
@@ -101,6 +104,7 @@ class SceneManager
         sf::RenderWindow& m_gameWindow;
         size_t m_totalScenes = 0;
         const sf::Clock& m_gameClock;
+        void m_deliverActions(Scene& scene);
     public:
         void update();
         void sceneDoAction();
@@ -111,6 +115,7 @@ class SceneManager
         void pollEventToLevelTriggerActions(sf::Time eventTriggerTime);
         SceneManager(const Game& game , sf::RenderWindow& gameWindow , sf::Clock& gameClock );
         void request(Request req);
+        void prepareToPushScene();
         
 };
 

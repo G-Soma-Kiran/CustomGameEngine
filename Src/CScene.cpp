@@ -5,8 +5,22 @@ SceneManager::SceneManager(const Game& game , sf::RenderWindow& gameWindow , sf:
 
 }
 
+void SceneManager::m_activateTopScene()
+{
+    m_gameWindow.setMouseCursor(sf::Cursor::createFromSystem(sf::Cursor::Type::Arrow).value());
+    auto& manager = m_sceneStack.back()->m_actionManager;
+    manager.m_updateGameTimeData(m_gameClock.getElapsedTime() , m_sceneStack.back()->m_isPaused);
+
+    sf::Event syntheticMove = sf::Event::MouseMoved{
+        .position = sf::Mouse::getPosition(m_gameWindow)
+    };
+    manager.setDeviceState(syntheticMove);
+    manager.processDeviceStateToAction();
+}
+
 void SceneManager::m_pushScene(const std::string& sceneName)
 {
+    prepareToPushScene();
     auto scene = m_game.makeScene(sceneName);
     scene->setSceneName(sceneName);
     scene->setSceneId(++m_totalScenes);
@@ -14,11 +28,16 @@ void SceneManager::m_pushScene(const std::string& sceneName)
     const auto& assets = m_game.getAssetsForScene(sceneName); 
     scene->onLoad(assets);
     m_sceneStack.push_back(std::move(scene));
+    m_activateTopScene();
 }
 
 void SceneManager::m_popScene()
 {
     m_sceneStack.pop_back();
+    if(!m_sceneStack.empty())
+    {
+        m_activateTopScene();
+    }
 }
 
 void SceneManager::m_clearScenes()
@@ -70,27 +89,8 @@ void SceneManager::update()
 
 void SceneManager::sceneDoAction()
 {
-    size_t index=0;
-    for( size_t i = m_sceneStack.size()-1 ;i>0 ; i--)
-    {
-        if(m_sceneStack[i]->propagateEventBelow() == false)
-        {
-            index = i;
-            break;
-        }
-    }
-    for( size_t i=index ; i < m_sceneStack.size(); i++)
-    {
-        auto& ptr = m_sceneStack[i];
-        for( auto& rawActionBundle : ptr->m_actionManager.getActions())
-        {
-            auto refinedActions = ptr->m_uisystem.refineAction(rawActionBundle);
-            for( auto& refinedAction : refinedActions )
-            {
-                ptr->sDoAction(refinedAction , m_toUpdate); 
-            }
-        }
-    }
+    if(m_sceneStack.empty()) return;
+    m_deliverActions(*m_sceneStack.back());
 }
 
 ActionBinding& Scene::registerActionBinding( const std::string& actionName)
@@ -100,23 +100,13 @@ ActionBinding& Scene::registerActionBinding( const std::string& actionName)
 
 void SceneManager::pollEventToEdgeTriggerActions(std::optional<sf::Event> opt , sf::Time eventTriggerTime)
 {
-    size_t index=0;
-    for( size_t i = m_sceneStack.size()-1 ;i>0 ; i--)
-    {
-        if(m_sceneStack[i]->propagateEventBelow() == false)
-        {
-            index = i;
-            break;
-        }
-    }
+    
+    if(m_sceneStack.empty()) return;
+    Scene& top = *m_sceneStack.back();
+    top.m_actionManager.m_updateGameTimeData(eventTriggerTime , top.m_isPaused);
+    top.m_actionManager.setDeviceState(opt);
+    top.m_actionManager.processDeviceStateToAction();
 
-    for( size_t i=index ; i < m_sceneStack.size(); i++)
-    {
-        
-        m_sceneStack[i]->m_actionManager.m_updateGameTimeData(eventTriggerTime , m_sceneStack[i]->m_isPaused);
-        m_sceneStack[i]->m_actionManager.setDeviceState(opt);
-        m_sceneStack[i]->m_actionManager.processDeviceStateToAction();
-    }
 }
 
 void SceneManager::sceneUpdate(sf::Time dt)
@@ -132,7 +122,13 @@ void SceneManager::sceneUpdate(sf::Time dt)
     }
     for( size_t i = index ; i < m_sceneStack.size() ; i++)
     {
+        m_sceneStack[i]->m_entities.update();
         m_sceneStack[i]->sUpdate(dt);
+        for(auto& req : m_sceneStack[i]->m_requests)
+        {
+            m_toUpdate.push_back(req);
+        }
+        m_sceneStack[i]->m_requests.clear();
     }
 
 }
@@ -192,21 +188,12 @@ bool Game::hasAssets(const std::string& sceneName ) const
 
 void SceneManager::pollEventToLevelTriggerActions(sf::Time eventTriggerTime)
 {
-    size_t index=0;
-    for( size_t i = m_sceneStack.size()-1 ;i>0 ; i--)
-    {
-        if(m_sceneStack[i]->propagateEventBelow() == false)
-        {
-            index = i;
-            break;
-        }
-    }
+        
+    if(m_sceneStack.empty()) return;
+    Scene& top = *m_sceneStack.back();
+    top.m_actionManager.m_updateGameTimeData(eventTriggerTime , top.m_isPaused);
+    top.m_actionManager.processOngoingActions();
 
-    for( size_t i=index ; i < m_sceneStack.size(); i++)
-    {
-        m_sceneStack[i]->m_actionManager.m_updateGameTimeData(eventTriggerTime , m_sceneStack[i]->m_isPaused);
-        m_sceneStack[i]->m_actionManager.processOngoingActions();
-    }
 }
 
 void Scene::setSceneName(const std::string& sceneName)
@@ -230,4 +217,29 @@ size_t Scene::getSceneId() const
 void Scene::setGameClockSource(const sf::Clock& gameClock)
 {
     m_gameClockPtr = &gameClock;
+}
+
+void SceneManager::prepareToPushScene()
+{
+    if(m_sceneStack.empty()) return;
+    Scene& below = *m_sceneStack.back();
+    below.m_actionManager.m_updateGameTimeData(m_gameClock.getElapsedTime() , below.m_isPaused);
+    below.m_actionManager.releaseAllInput();
+    below.m_actionManager.processDeviceStateToAction(true);   // emits Ended for anything still active
+    m_deliverActions(below);
+}
+
+void SceneManager::m_deliverActions(Scene& scene)
+{
+    for(auto& rawActionBundle : scene.m_actionManager.getActions())
+    {
+        auto refinedActions = scene.m_uisystem.refineAction(rawActionBundle);
+        for(auto& refinedAction : refinedActions)
+            scene.sDoAction(refinedAction);
+    }
+}
+
+std::string Game::getDefaultScene() const
+{
+    return m_defaultScene;
 }

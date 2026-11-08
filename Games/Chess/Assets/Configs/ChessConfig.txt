@@ -1,0 +1,7 @@
+BoardPosition 500.0 200.0
+CellSize 100
+evenTileColor 234 237 209 255
+oddTileColor 118 149 86 255
+selectedEvenTileColor 245 246 130 255
+selectedOddTileColor 185 202 67 255
+attackingCircleColor 0 0 0 36

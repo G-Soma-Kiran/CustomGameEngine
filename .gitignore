@@ -4,3 +4,8 @@ Makefile
 *.make
 commit_message.txt
 todo.txt
+dump_premake_api.lua
+BuildEngine.lua
+.luals
+.luarc.json
+ResizeImage.exe

@@ -112,7 +112,7 @@ class UISystem
     public:
         UISystem(EntityManager& entityManager , ActionManager& actionManager);
         std::vector<RefinedAction> refineAction(RawActionBundle input);
-        std::shared_ptr<Entity> makeButton(const sf::Texture& buttonTexture , ButtonStateRects rects , Vector position , sf::FloatRect localBounds = {});
+        std::shared_ptr<Entity> makeButton(const sf::Texture& buttonTexture , ButtonStateRects rects , sf::Vector2f position , sf::FloatRect localBounds = {});
         bool buttonUpdate(size_t entityId , ButtonState newState); // returns true if really the entity has component and update is done
         size_t updateMouseOver( const sf::Vector2i& mousePos );
         sf::Vector2i getMousePos() const { return m_uistate.currentMousePos; }

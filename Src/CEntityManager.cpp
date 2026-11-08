@@ -6,6 +6,7 @@
 #include<vector>
 #include<map>
 #include<algorithm>
+#include"CConstantsAndDefines.hpp"
 
 
 Entity::Entity(){};
@@ -23,7 +24,6 @@ void Entity::destroy()
 {
     m_isALive = false;
 };
-
 size_t Entity::getId() const
 {
     return m_id;
@@ -92,25 +92,11 @@ void EntityManager::removeAllComponents(size_t id)
     }
 }
 
-size_t EntityManager::  findTopMostEntityIdUnderMouse(const sf::Vector2i& mousePos)
+size_t EntityManager::findTopMostEntityIdUnderMouse(const sf::Vector2i& mousePos)
 {
-    size_t topMostEntityId = 0;
+    size_t topMostEntityId = NoEntity;                  
     int highestZIndex = INT_MIN;
-    // auto& RenderComponents = this->storage<CRender>();
-    // for ( auto& entity : this->getEntities())
-    // {
-    //     if( entity->isAlive() && RenderComponents.hasComponent(entity->getId()) )
-    //     {
-    //         if( RenderComponents.getComponent(entity->getId()).render && (RenderComponents.getComponent(entity->getId()).zIndex > highestZIndex) )
-    //         {
-    //             highestZIndex = RenderComponents.getComponent(entity->getId()).zIndex;
-    //             topMostEntityId = entity->getId();
-    //         }
-    //     }
-    // }
 
-
-    //Did not check for the alive or dead of entity because the m_entities.update() (runs in scene.update() override function) would not happen unitl all actions are resolved....
     auto& mouseInteractionComponentData = this->storage<CMouseInteraction>().m_data;
 
     for( auto& [entityId , component] : mouseInteractionComponentData  )
@@ -119,15 +105,24 @@ size_t EntityManager::  findTopMostEntityIdUnderMouse(const sf::Vector2i& mouseP
         {
             if( this->storage<CRender>().hasComponent(entityId) )
             {
+                if(!storage<CTransform>().hasComponent(entityId)) continue;
+                auto& transformComp = storage<CTransform>().getComponent(entityId);
+                if(!sf::FloatRect(component.localBounds.position + transformComp.position , component.localBounds.size ).contains(sf::Vector2f(mousePos)))
+                {
+                    continue;
+                }
+
                 auto& renderComponentOfEntity = this->storage<CRender>().getComponent(entityId);
-                if( renderComponentOfEntity.zIndex > highestZIndex )
+                if( !renderComponentOfEntity.render ) continue;                                                      
+
+                if( renderComponentOfEntity.zIndex > highestZIndex
+                    || (renderComponentOfEntity.zIndex == highestZIndex && entityId > topMostEntityId) )
                 {
                     highestZIndex = renderComponentOfEntity.zIndex;
                     topMostEntityId = entityId;
                 }
             }
-
-        }                                                                                                                                                
+        }
     }
     return topMostEntityId;
 }

@@ -63,19 +63,6 @@ struct ComponentStorage : IStorage
         }
 };
 
-// template<typename component>
-// class ComponentStorage
-// {
-//     private:
-//         std::unordered_map<size_t id , component> data;
-//     public:
-//         void add(size_t id)
-//         {
-//             data[id] = std::make_shared<component>( )
-//         }
-// };
-
-
 class CRender
 {
     public:
@@ -105,16 +92,16 @@ class CDebugShape
 class CTransform
 {
     public:
-        Vector position = {0 , 0};
-        Vector velocity = {0 , 0};
-        CTransform(const Vector& p , const Vector& v = {0 , 0} ) : position(p) , velocity(v) {};
+        sf::Vector2f position = {0 , 0};
+        sf::Vector2f velocity = {0 , 0};
+        CTransform(const sf::Vector2f& p , const sf::Vector2f& v = {0 , 0} ) : position(p) , velocity(v) {};
 };
 
 class CDraggable
 {
     public:
         bool isBeingDragged = false;
-        Vector dragPosition = {0 , 0};
+        sf::Vector2f dragPosition = {0 , 0};
         sf::FloatRect localDragHitbox;
         CDraggable(sf::FloatRect rect) :localDragHitbox(rect){};
 };
@@ -125,11 +112,6 @@ public:
     sf::FloatRect localBounds;
 
     bool enabled = true;
-
-    bool isBeingDragged = false;
-    bool isBeingHovered = false;
-
-    Vector positionWhileBeingDragged ;
 
     CMouseInteraction(sf::FloatRect localHitbox):localBounds(localHitbox){}; 
     

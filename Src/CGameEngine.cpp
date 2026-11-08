@@ -7,13 +7,14 @@
 
 Engine::Engine(const Game& game): m_scenes(game , m_window , m_gameClock)
 {
+    m_defaultScene = game.getDefaultScene();
     init();
 }
 
 void Engine::run()
 {
     m_gameClock.start();
-    m_scenes.request({ RequestCommand::Push , "Default"});
+    m_scenes.request({ RequestCommand::Push , m_defaultScene });
     m_scenes.update();
     while(m_window.isOpen())
     {
@@ -31,9 +32,9 @@ void Engine::run()
         }
         m_scenes.pollEventToLevelTriggerActions( m_gameClock.getElapsedTime() );
         m_scenes.sceneDoAction();
+        m_scenes.sceneUpdate(dt);
         m_scenes.update();
         if(m_scenes.isEmpty()){return;}
-        m_scenes.sceneUpdate(dt);
         m_window.clear();
         m_scenes.sceneRender(m_window);
         m_window.display();
@@ -42,5 +43,7 @@ void Engine::run()
 
 void Engine::init()
 {
-    m_window.create(sf::VideoMode({800, 600}) , "TEST" , sf::Style::Default , sf::State::Windowed );
+    // m_window.create(sf::VideoMode({800, 600}) , "TEST" , sf::Style::Default , sf::State::Windowed );
+    m_window.create(sf::VideoMode({1080, 1920}) , "TEST" , sf::Style::Default , sf::State::Fullscreen );
+    m_window.setFramerateLimit(60);
 }
