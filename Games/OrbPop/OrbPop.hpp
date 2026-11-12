@@ -90,7 +90,7 @@ class OrbPop : public Scene
         void sDoAction(RefinedAction& input) override ;
         void sUpdate(sf::Time dt) override ;
         void sRender(sf::RenderWindow& gameWindow) override ;
-        void onLoad(const std::optional<std::vector<Asset>>& assets) override ;
+        void onLoad() override ;
         void onDelete() override ;
         bool renderBelow() override ;
         bool updateBelow() override ;

@@ -63,7 +63,7 @@ void InputTestScene::onDelete()
 {
 }
 
-void InputTestScene::onLoad( const std::optional<std::vector<Asset>>& /*assets*/ )
+void InputTestScene::onLoad()
 {
     {
         ActionBinding& binding = this->registerActionBinding("MouseOver");

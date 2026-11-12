@@ -53,7 +53,7 @@ class Scene
         virtual void sUpdate(sf::Time dt) = 0;
         virtual void sRender(sf::RenderWindow& gameWindow) = 0;
         
-        virtual void onLoad(const std::optional<std::vector<Asset>>& assets) = 0;
+        virtual void onLoad() = 0;
         virtual void onDelete() = 0;
         
         virtual bool renderBelow() = 0;
@@ -70,7 +70,8 @@ class Game
 {
     private:
         std::unordered_map<std::string , std::function<std::unique_ptr<Scene>()>> m_sceneMakers;
-        std::unordered_map<std::string , std::vector<Asset>> m_gameAssets;
+        std::unordered_map<std::string , std::vector<Asset>> m_localGameAssets;
+        std::unordered_map<std::string , std::vector<Asset>> m_globalGameAssets;
         std::string m_defaultScene;
     public:
         template<typename sceneDerivative>
@@ -81,10 +82,11 @@ class Game
                 return std::make_unique<sceneDerivative>();
             };
         };
-        void addGameAsset( const Asset& asset , const std::vector<std::string> ownerScenes );
-        bool hasAssets( const std::string& sceneName ) const;
+        void addLocalGameAsset( const Asset& asset , const std::vector<std::string> ownerScenes );
+        void addGlobalGameAsset( const Asset& asset , const std::string& initiatorSceneName );
         std::unique_ptr<Scene> makeScene(const std::string& sceneName) const;
-        const std::optional<std::vector<Asset>> getAssetsForScene( const std::string& sceneName ) const;
+        const std::optional<std::vector<Asset>> getLocalAssetsForScene( const std::string& sceneName ) const;
+        const std::optional<std::vector<Asset>> getGlobalAssetsForScene( const std::string& sceneName ) const;
         Game(const std::string& defaultScene) : m_defaultScene(defaultScene){}
         std::string getDefaultScene() const;
 };

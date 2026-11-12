@@ -16,9 +16,8 @@ void HomeScreen::onDelete()
     //Have to implement
 }
 
-void HomeScreen::onLoad( const std::optional<std::vector<Asset>>& assets )
+void HomeScreen::onLoad()
 {
-    m_assetManager.loadAssets(assets);
 
     {
         ActionBinding& binding = this->registerActionBinding("LeftClick");

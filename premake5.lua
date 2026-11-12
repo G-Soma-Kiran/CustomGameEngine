@@ -10,7 +10,8 @@ function UseSFML()
     {
         "sfml-graphics",
         "sfml-window",
-        "sfml-system"
+        "sfml-system",
+        "sfml-audio"
     }
 end
 

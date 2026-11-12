@@ -21,9 +21,8 @@ void Chess::onDelete()
     
 }
 
-void Chess::onLoad( const std::optional<std::vector<Asset>>& assets )
+void Chess::onLoad( )
 {
-    m_assetManager.loadAssets(assets);
 
     std::ifstream file("Games/Chess/Assets/Configs/ChessConfig.txt");
     if(!file.is_open())
@@ -132,6 +131,7 @@ void Chess::sDoAction(RefinedAction& input)
             if(input.getInitiateEntityId() != NoEntity)
             {
                 tracker.dragging=selectPiece(input.getInitiateEntityId());
+                if(tracker.dragging) cancelSlide(tracker.trackingEntityId);
             }
         }
         else if(input.getType() == ActionType::OnGoing)
@@ -141,7 +141,7 @@ void Chess::sDoAction(RefinedAction& input)
                 auto& visualComp = m_entities.storage<CVisual>().getComponent(tracker.trackingEntityId);
                 const sf::Vector2f mouse(m_uisystem.getMousePos());
                 
-                visualComp.sprite.setPosition(mouse - sf::Vector2f(m_config.cellSize / 2.f , m_config.cellSize / 2.f));
+                visualComp.sprite.setPosition(mouse);
 
                 const Cell hover = m_getBoardPositionOfWorldPos(sf::Vector2f(m_uisystem.getMousePos()));
                 m_showHover = hover.isValid();
@@ -191,24 +191,40 @@ void Chess::sDoAction(RefinedAction& input)
             syncView();
         }
     }
-    else if(input.getName() == "PreviousScene" && input.getType() == ActionType::Started)
-    {
-        m_requests.push_back(Request(RequestCommand::Pop , "InputTest"));
-    }
     else if(input.getName() == "NextScene" && input.getType() == ActionType::Started)
     {
         m_appliedCursor.reset();
         m_requests.push_back(Request(RequestCommand::Push , "OrbPop"));
     }
+    else if(input.getName() == "PreviousScene" && input.getType() == ActionType::Started)
+    {
+        m_requests.push_back(Request(RequestCommand::Pop , "Chess"));
+    }
 }
 
 void Chess::sUpdate(sf::Time dt)
 {
-    m_entities.update();
-    if(m_history[m_historyPointer].gameState != GameState::Playing)
+    const float d = std::min(dt.asSeconds() , 0.1f);     
+
+    for(Slide& s : m_slides)
     {
-        m_requests.push_back(Request(RequestCommand::Pop , "InputTest"));
+        s.elapsed += d;
+        const float t = std::min(s.elapsed / s.duration , 1.f);
+        const float e = t < 0.5f ? 4.f * t * t * t : 1.f - std::pow(-2.f * t + 2.f , 3.f) / 2.f;
+        auto& sprite = m_entities.storage<CVisual>().getComponent(s.id).sprite;
+
+        if(t >= 1.f)
+        {
+            sprite.setPosition(s.to);                       
+            sprite.setRotation(sf::degrees(0.f));
+        }
+        else
+        {
+            sprite.setPosition(s.from + (s.to - s.from) * e);
+            sprite.setRotation(sf::degrees(s.tilt * std::sin(t * std::numbers::pi_v<float>)));
+        }
     }
+    std::erase_if(m_slides , [](const Slide& s){ return s.elapsed >= s.duration; });
 }
 
 void Chess::sRender(sf::RenderWindow& gameWindow)
@@ -231,7 +247,6 @@ void Chess::sRender(sf::RenderWindow& gameWindow)
     }
     if(m_showHover) gameWindow.draw(m_hoverRect);
 
-
     for(auto& entity : m_entities.getEntities())
     {
         if(entity->getId() == tracker.trackingEntityId) continue;   
@@ -243,6 +258,8 @@ void Chess::sRender(sf::RenderWindow& gameWindow)
     {
         gameWindow.draw(m_entities.storage<CVisual>().getComponent(tracker.trackingEntityId).sprite);
     }
+
+    
 
 }
 
@@ -383,6 +400,7 @@ void Chess::spawnPiece(Snapshot& snapshot , PieceType type , PieceColor color , 
     m_entities.storage<CTransform>().addComponent(id , m_getWorldPosOfBoardPosition(row , col) );
     auto& visualComp =  m_entities.storage<CVisual>().addComponent(id , m_assetManager.getTexture(textureNameOf(type , color)));
     visualComp.sprite.setScale({m_config.cellSize / visualComp.sprite.getLocalBounds().size.x ,m_config.cellSize / visualComp.sprite.getLocalBounds().size.y });
+    visualComp.sprite.setOrigin(visualComp.sprite.getLocalBounds().size / 2.f);
     m_entities.storage<CMouseInteraction>().addComponent(id , sf::FloatRect({0.f , 0.f} ,{m_config.cellSize , m_config.cellSize}) );
     m_entities.storage<CRender>().addComponent(id).zIndex = 1;
 
@@ -445,6 +463,41 @@ void Chess::setUpPieces()
     m_historyPointer = 0;
 }
 
+void Chess::startSlide(size_t id , sf::Vector2f from , sf::Vector2f to)
+{
+    const float dx = to.x - from.x;
+    const float dy = to.y - from.y;
+    const bool forward = (dx != 0.f) ? (dx > 0.f) : (dy > 0.f);
+    const float tilt = forward ? 7.f : -7.f;
+
+
+    for(Slide& s : m_slides)
+    {
+        if(s.id != id) continue;
+        if(s.to == to) return;
+        s.from = from;
+        s.to = to;
+        s.elapsed = 0.f;
+        s.tilt = tilt;
+        s.duration = std::min(0.45f , 0.14f + 0.035f * std::hypot(to.x - from.x , to.y - from.y) / static_cast<float>(m_config.cellSize));
+        return;
+    }
+
+    Slide s;
+    s.id = id;
+    s.from = from;
+    s.to = to;
+    s.tilt = tilt;
+    s.duration = std::min(0.45f , 0.14f + 0.035f * std::hypot(to.x - from.x , to.y - from.y) / static_cast<float>(m_config.cellSize));
+    m_slides.push_back(s);
+}
+
+void Chess::cancelSlide(size_t id)
+{
+    auto& sprite = m_entities.storage<CVisual>().getComponent(id).sprite;
+    sprite.setRotation(sf::degrees(0.f));
+}
+
 void Chess::syncView()
 {
     m_showHover = false;
@@ -465,7 +518,9 @@ void Chess::syncView()
                 const sf::Vector2f pos = m_getWorldPosOfBoardPosition(i , j);
                 
                 m_entities.storage<CTransform>().getComponent(id).position = pos;
-                m_entities.storage<CVisual>().getComponent(id).sprite.setPosition(pos);
+                auto& sprite = m_entities.storage<CVisual>().getComponent(id).sprite;
+                const sf::Vector2f center = getCellCenter(i , j);
+                if(sprite.getPosition() != center) startSlide(id , sprite.getPosition() , center);
                 m_entities.storage<CRender>().getComponent(id).render = true;
             }
 
@@ -676,7 +731,15 @@ bool Chess::validateMove(Cell from , Cell to)
     next.Turn = (current.Turn == PieceColor::White) ? PieceColor::Black : PieceColor::White;
 
     const bool kingIsUnderAttack = isKingUnderAttack(next.squares , current.Turn ); 
-    if(kingIsUnderAttack) return false;
+    if(kingIsUnderAttack) 
+    {
+
+        return false;
+    }
+    else
+    {
+        
+    }
     
     m_history.erase(m_history.begin() + m_historyPointer + 1 , m_history.end());
     m_history.push_back(next);
@@ -764,8 +827,10 @@ void Chess::updateCursor(sf::RenderWindow& window)
     }
 }
 
-
-
+sf::Vector2f Chess::getCellCenter(int row , int col)
+{
+    return m_getWorldPosOfBoardPosition(row , col) + sf::Vector2f(m_config.cellSize / 2.f , m_config.cellSize / 2.f);
+}
 
 // #include"Chess.hpp"
 // #include<algorithm>
@@ -947,9 +1012,8 @@ void Chess::updateCursor(sf::RenderWindow& window)
 //         m_window->setMouseCursor(*cursors().arrow);
 // }
 
-// void Chess::onLoad( const std::optional<std::vector<Asset>>& assets )
+// void Chess::onLoad()
 // {
-//     m_assetManager.loadAssets(assets);
 
 //     std::ifstream file("ChessConfig.txt");
 //     if(!file.is_open())
@@ -1590,7 +1654,7 @@ void Chess::updateCursor(sf::RenderWindow& window)
 //     anim.to = to;
 //     anim.elapsed = 0.f;
 //     anim.progress = 0.f;
-//     anim.duration = std::min(0.45f , 0.14f + 0.035f * distanceInCells);     // longer trips take a bit longer
+//     anim.duration = std::min(0.45f , 0.14f + 0.035f * std::hypot(to.x - from.x , to.y - from.y) / cell);     // longer trips take a bit longer
 //     anim.currentTilt = 0.f;
 
 //     // lean in the direction of travel

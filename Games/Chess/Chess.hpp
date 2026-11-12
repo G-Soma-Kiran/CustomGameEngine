@@ -46,6 +46,13 @@ class CChessPiece
         int maxMoves;
         CChessPiece(PieceType type , PieceColor color ,std::vector<std::pair<int , int>> directions , int maxMoves ) : type(type) , color(color) , directions(directions) , maxMoves(maxMoves){}
 };
+struct Slide 
+{ 
+    size_t id; 
+    sf::Vector2f from , to; 
+    float elapsed = 0.f , duration = 0.45f;
+    float tilt = 0.f; 
+};
 
 class Tile
 {
@@ -102,6 +109,7 @@ class Chess : public Scene
         std::optional<sf::Cursor> m_closedHandCursor;
         std::optional<sf::Cursor> m_defaultCursor;
         std::optional<CursorType> m_appliedCursor; 
+        std::vector<Slide> m_slides;
         void updateCursor(sf::RenderWindow& window);
 
         std::array<std::array<Tile, 8>, 8> m_tiles{};
@@ -126,7 +134,11 @@ class Chess : public Scene
         bool isCellUnderAttack(const Squares& sq , Cell target , PieceColor by);
         bool isKingUnderAttack(const Squares& sq , PieceColor color);
         bool validateMove(Cell from , Cell to);        
+        void startSlide(size_t id , sf::Vector2f from , sf::Vector2f to);
+        void cancelSlide(size_t id);
         void syncView();
+
+        sf::Vector2f getCellCenter(int row , int col);
 
         sf::Vector2f m_getWorldPosOfBoardPosition(int row , int col);
         Cell m_getBoardPositionOfWorldPos(sf::Vector2f pos);
@@ -137,7 +149,7 @@ class Chess : public Scene
         void sDoAction(RefinedAction& input) override ;
         void sUpdate(sf::Time dt) override ;
         void sRender(sf::RenderWindow& gameWindow)  override;
-        void onLoad(const std::optional<std::vector<Asset>>& assets) override ;
+        void onLoad() override ;
         void onDelete()  override;
         bool renderBelow() override ;
         bool updateBelow() override ;
@@ -336,7 +348,7 @@ class Chess : public Scene
 //         void sDoAction(RefinedAction& input) override ;
 //         void sUpdate(sf::Time dt) override ;
 //         void sRender(sf::RenderWindow& gameWindow) override ;
-//         void onLoad(const std::optional<std::vector<Asset>>& assets) override ;
+//         void onLoad() override ;
 //         void onDelete() override ;
 //         bool renderBelow() override ;
 //         bool updateBelow() override ;

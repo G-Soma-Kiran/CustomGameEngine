@@ -59,9 +59,8 @@ float OrbPop::rnd(float lo , float hi)
 // Setup
 // -------------------------------------------------------------------
 
-void OrbPop::onLoad(const std::optional<std::vector<Asset>>& assets)
+void OrbPop::onLoad()
 {
-    m_assetManager.loadAssets(assets);
 
     {
         ActionBinding& binding = this->registerActionBinding("MouseOver");
@@ -85,6 +84,16 @@ void OrbPop::onLoad(const std::optional<std::vector<Asset>>& assets)
     {
         ActionBinding& binding = this->registerActionBinding("Close");
         binding.addCondition<KeyCondition>(sf::Keyboard::Key::Escape);
+        binding.addCondition<ModifierCondition>(false , false , false);
+    }
+    {
+        ActionBinding& binding = this->registerActionBinding("NextScene");
+        binding.addCondition<KeyCondition>(sf::Keyboard::Key::N);
+        binding.addCondition<ModifierCondition>(false , false , false);
+    }
+    {
+        ActionBinding& binding = this->registerActionBinding("PreviousScene");
+        binding.addCondition<KeyCondition>(sf::Keyboard::Key::P);
         binding.addCondition<ModifierCondition>(false , false , false);
     }
 
@@ -191,6 +200,14 @@ void OrbPop::sDoAction(RefinedAction& input)
     else if(name == "LeftDown" && type == ActionType::Started)
     {
         handleClick(sf::Vector2f(input.getTriggerMousePos()));
+    }
+    else if(name == "NextScene" && type == ActionType::Started)
+    {
+        m_requests.push_back(Request(RequestCommand::Push , "PvZ"));
+    }
+    else if(name == "PreviousScene" && type == ActionType::Started)
+    {
+        m_requests.push_back(Request(RequestCommand::Pop , "OrbPop"));
     }
 }
 

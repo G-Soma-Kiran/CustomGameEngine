@@ -1,7 +1,6 @@
 local scene  = arg[1] or "all"
 local config = arg[2] or "Debug"
 
--- folder this script lives in; every command runs from there
 local root = (arg[0]:gsub("/", "\\")):match("^(.*)\\[^\\]*$") or "."
 
 local l = config:lower()

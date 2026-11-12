@@ -23,12 +23,6 @@ class Entity
         Entity();
         Entity(const size_t id , const std::string& tag);
     public:
-        // std::shared_ptr<CTransform> cTransform;
-        // std::shared_ptr<CShape> cShape;
-        // std::shared_ptr<CCollision> cCollision;
-        // std::shared_ptr<CInput> cInput;
-        // std::shared_ptr<CScore> cScore;
-        // std::shared_ptr<CLifespan> cLifespan;  
         bool isAlive() const;
         const std::string& tag() const;
         void destroy();

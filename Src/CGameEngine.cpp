@@ -45,5 +45,6 @@ void Engine::init()
 {
     // m_window.create(sf::VideoMode({800, 600}) , "TEST" , sf::Style::Default , sf::State::Windowed );
     m_window.create(sf::VideoMode({1080, 1920}) , "TEST" , sf::Style::Default , sf::State::Fullscreen );
-    m_window.setFramerateLimit(60);
+    // m_window.setFramerateLimit(60);
+    m_window.setVerticalSyncEnabled(true);
 }

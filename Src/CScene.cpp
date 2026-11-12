@@ -25,8 +25,14 @@ void SceneManager::m_pushScene(const std::string& sceneName)
     scene->setSceneName(sceneName);
     scene->setSceneId(++m_totalScenes);
     scene->setGameClockSource(m_gameClock);
-    const auto& assets = m_game.getAssetsForScene(sceneName); 
-    scene->onLoad(assets);
+
+    const auto& localAssets = m_game.getLocalAssetsForScene(sceneName); 
+    scene->m_assetManager.m_loadAssets(localAssets , false);
+
+    const auto& globalAssets = m_game.getGlobalAssetsForScene(sceneName); 
+    scene->m_assetManager.m_loadAssets(globalAssets , true);
+    
+    scene->onLoad();
     m_sceneStack.push_back(std::move(scene));
     m_activateTopScene();
 }
@@ -161,29 +167,44 @@ void SceneManager::request(Request req)
     m_toUpdate.push_back(req);
 }
 
-const std::optional<std::vector<Asset>> Game::getAssetsForScene( const std::string& sceneName ) const
+const std::optional<std::vector<Asset>> Game::getLocalAssetsForScene( const std::string& sceneName ) const
 {
-    if(hasAssets(sceneName))
-        return m_gameAssets.at(sceneName) ;
+    auto it = m_localGameAssets.find(sceneName);
+    if(it != m_localGameAssets.end())
+        return it->second;
+    return std::nullopt;
+}
+
+const std::optional<std::vector<Asset>> Game::getGlobalAssetsForScene( const std::string& sceneName ) const
+{
+    auto it = m_globalGameAssets.find(sceneName);
+    if(it != m_globalGameAssets.end())
+        return it->second;
     return std::nullopt;
 }
 
 std::unique_ptr<Scene> Game::makeScene(const std::string& sceneName ) const
 {   
-    return m_sceneMakers.at(sceneName)();
+    auto it = m_sceneMakers.find(sceneName);
+    if(it != m_sceneMakers.end())
+    {
+        return it->second();
+    }
+    
+    throw std::runtime_error(std::format("Could not find scene : {}\n" , sceneName));
 }
 
-void Game::addGameAsset( const Asset& asset , const std::vector<std::string> ownerScenes )
+void Game::addLocalGameAsset( const Asset& asset , const std::vector<std::string> ownerScenes )
 {
     for(const std::string& ownerScene : ownerScenes)
     {
-        m_gameAssets[ownerScene].push_back(asset);
+        m_localGameAssets[ownerScene].push_back(asset);
     }
 }
 
-bool Game::hasAssets(const std::string& sceneName ) const
+void Game::addGlobalGameAsset( const Asset& asset , const std::string& initiatorSceneName )
 {
-    return (m_gameAssets.count(sceneName) > 0);
+    m_globalGameAssets[initiatorSceneName].push_back(asset);
 }
 
 void SceneManager::pollEventToLevelTriggerActions(sf::Time eventTriggerTime)

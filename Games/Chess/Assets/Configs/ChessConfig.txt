@@ -1,5 +1,5 @@
-BoardPosition 500.0 200.0
-CellSize 100
+BoardPosition 390.0 192.0
+CellSize 94
 evenTileColor 234 237 209 255
 oddTileColor 118 149 86 255
 selectedEvenTileColor 245 246 130 255
